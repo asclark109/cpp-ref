@@ -1,0 +1,14 @@
+I am using VS code as an IDE.
+
+I installed 3 C++ compilers for my Windows OS machine and have confirmed they all work: 
+- gcc
+- clang
+- MSVC (microsoft's compiler for C++)
+
+I have configured my IDE to create a C++ template project (see .vscode folder),
+which allows me in my IDE to complile a C++ program using any of the 3 compilers
+(see capture.jpg)
+
+As confirmation I am attaching a picture of my IDE setup with the options to 
+choose which compiler to use, and I am taking a picture of terminal output
+when running the compiled program.
