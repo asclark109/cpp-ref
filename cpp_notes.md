@@ -258,12 +258,12 @@ std::cout << "please enter your full name" << std::endl;
 std::getline(std::cin, full_name);
 ```
 
-### C++ program execution model
+## C++ program execution model
 
 https://www.youtube.com/watch?v=8jLOx1hD3_o
 jump to 02:49:57
 
-### C++ Core Language vs Standard Library vs STL
+## C++ Core Language vs Standard Library vs STL
 
 * __Core Features__: core building block that makes up the C++ language; for example, how to define variables, the rules that make up how you can define and use functions, the rules about what you can and cannot do in C++, etc.. 
   * e.g. how functions are written, the built-in types
@@ -340,7 +340,6 @@ __variable__ a named piece of memory that you use to store specific types of dat
 * must start with lowercase letter or underscore
 * are case sensitive
 
-
 ## braced variable initialization
 
 initializing a variable has the form:
@@ -388,6 +387,93 @@ std::cout << "sizeof int : " << sizeof(truck_count) << std::endl;
 ## int
 
 * typically occupies 4 bytes (32-bits) or more in memory
+* whether an int is signed or unsigned, it will still occupy the same amount of space in memory
+
+### integer modifier (__`signed`__, __`unsigned`__, __`short`__, __`long`__)
+
+* can make ints __`signed`__ or __`unsigned`__, which denotes whether to represent positive or negative or only positive integers
+* `unsigned int`: can only be positive
+  * unsigned int range: `[2,2^n-1]`, where `n` is the number of bits available in memory
+  * e.g. 4 bytes in memory: `[0,4294967295]`
+* `signed int`: can be positive or negative
+  * signed int range `[2^(n-1), 2^(n-1)-1]`
+  * e.g. 4 bytes in memory: `[-2147483648, 2147483647]`
+
+* can make ints __`short`__ or __`long`__ to decrease or increase how much memory they take up
+* `short int`: e.g. uses 2 bytes
+* `int`: uses 4 bytes
+* `long int`: uses 4 or 8 bytes
+Can combine modifiers; for example: `signed long int myNumber {1234};`
+
+These modifiers only work on integral types (data types in which you can store decimal numbers)
+* can use `sizeof()` to confirm the memory occupied
+
+### Fractional Numbers (__`float`__, __`double`__, __`long double`__)
+
+__Floating Point Types__
+* `float`: 4 bytes, 7 digits precision (number of bits you can represent)
+* `double`: 8 bytes, 15 digits precision (may vary with compiler)
+* `long double`: 12 bytes, precision > double
+  * to create a float or long double literal, you MUST include the suffices (i.e. `1.022f` and `1.022L`)
+
+```c++
+float num1 {1.12345678901234567890f};
+double num2 {1.12345678901234567890};
+long double num3 {1.12345678901234567890L};
+
+std::cout << std::setprecision(20) // sets the precision you want to see when printing numbers
+std::cout << num1 << std::endl; // 7 digits
+```
+
+* things will change based on the compiler implementation
+
+Floating point numbers are stored in memory using a specific floating point number memory representation (`IEEE_754`).
+* if you take a floating point number and divide by 0, you will get `infinity(+/-)`
+* `0.0/0.0` gives `NaN`; avoid this
+
+### boolean
+
+* a `bool` occupies 8 bits (1 byte) in memory; this seems wasteful, since a byte can store 256 states
+* if you are working on a device with limited memory, there are techniques to store the boolean with less memory
+
+example of bracket initialization:
+```c++
+bool redLight {true};
+```
+
+### Characters and Text
+
+* `char` data type is meant to store a single character; is wrapped in single quotes `'a'`
+* occupies 1 byte of memory. Since 1 byte can represent 256 states, 1 byte is enough memory to represent the 128 __ASCII__ characters
+* __unicode__ is a more extensive character set of almost 150,000 characters that includes letters in e.g. Arabic, East Asian Languages
+
+```c++
+char character1 {'a'}; // a character; wrapped in single quotes
+char value = 65; // compiler will interpret 65 as a char, which represents A in the ASCII table
+static_cast<int>(value) // transform char into an int 65 <= 'A'
+```
+
+### __`auto`__
+
+__`auto`__ is a keyword that tells the compiler to deduce the type
+
+```c++
+auto var1 {12};
+auto var2 {12.0};
+auto var3 {12.0f};
+auto var4 {12.0l};
+auto var5 {'e'};
+// int modifier suffices
+auto var6 {123u};  // unsigned
+auto var7 {123ul}; // unsigned long
+auto var8 {123ll}; // long long
+``` 
+
+### Assignments
+
+
+
+# SHORT GUIDE BELOW:
 
 # Variables, Basic Data Types, basic I/O
 
@@ -1848,3 +1934,424 @@ int main()
 
 }
 ```
+
+# Casting
+
+__Implicit cast__: when you manually store an object of one type into a reference for an object of another type:
+```c++
+double x = 5.25;
+int y;
+y = x; // compiler may give warning...it'll transform the double value into an int for you
+```
+
+__Explicit cast__
+```c++
+double x = 5.25;
+int y;
+y = (int)x; // tells the compiler you're okay with the loss of precision
+```
+
+
+# __`unique_ptr`__ (Lec)
+
+C++ has lightweight abstractions that will automatically correctly manage the lifetimes of an object in memory
+* __`unique_ptr`__ is one of the abstractions
+
+### creating `unique_ptr`
+
+create with `make_unique<T>`. creates an object in memory on demand and returns a kind of handle to the object of type `unique_ptr<T>` that can be used to reference the object
+```c++
+// create an int in memory and return an associated unique_ptr
+unique_ptr<int> ui = make_unique<int>(5);
+```
+* `unique_ptr` gives access to the data in the object
+  * when you need a reference to the object managed by the `unique_ptr`, use the `*` operator
+```c++
+unique_ptr<int> ui = make_unique<int>(5);
+cout << *ui; // prints 5
+```
+* manages the lifetime of the object
+  * when the `unique_ptr` goes away, it will automatically free up the memory of the object that it is managing
+
+### updating `unique_ptr`
+if you bind a `unique_ptr` to point to a new object, it will free up the old one before it starts to manage the new one
+```c++
+auto ui = make_unique<int>(5);
+cout << *ui; // prints 5
+ui = make_unique<int>(2);
+cout << *ui; // prints 2
+```
+* `unique_ptr` automatically releases the memory of the first object (the one with value 5) before it starts managing the new object (the one with value 2)
+
+`NOTE`: low-level concepts like `pointers`, `new`, `delete`, `malloc`, `free` should not be used outside systems programming that has a specific need for low-level manipulation; normal programming should stick with lightweight abstractions like `unique_ptr`
+
+
+
+### transfering ownership (`unique_ptr`)
+it is a little tricky to transfer ownership from one `unique_ptr` to another
+* can't do assignment `up2 = up1; // oops! two "unique" owners`
+* use `move()`:
+```c++
+up2 = move(up1); // up2 is owner, don't use up1
+```
+
+```c++
+auto ui = make_unique<int>(5);
+cout << *ui; // prints 5
+ui = make_unique<int>(2);
+cout << *ui; // prints 2
+```
+* `unique_ptr` automatically releases the memory of the first object (the one with value 5) before it starts managing the new object (the one with value 2)
+
+### youtube tutorial
+
+when you have a normal pointer like `int* x = new int`, for every `new` keyword you're going to need to have a `delete`. With smart pointers, they're not just a variable that holds a memory address, they are objects. So, they can do more: they have methods, constructors, templates.
+
+`unique_ptr` is 1 of the 3 available smart pointers available in c++11 or later (c++14, c++20 has changes)
+* doesn't allow "sharing" objects (prevents multiple smart pointers from owning the object)
+  * still quite commong to use `std::unique_ptr` to indicate an owner for the object but to pass around raw pointers (obtained with `std::unique_ptr::get()`) to code that needs access to the object
+* automatic frees memory
+* `#include <memory>`
+
+```c++
+#include <iostream>
+#include <memory>
+#include <vector>
+
+int main()
+{
+  // unique_ptr<type> name(memoryaddress);
+  unique_ptr<int> p(new int); // object in memory that has the memory address for the dynamically allocated variable
+  *p = 99; // get the thing located at the address with the dereference operator
+  std::cout << *p << std::endl;; // 99
+
+  unique_ptr<int> a(new int {88});
+  *a = 77;
+
+  unique_ptr<int[]> arr(new int[5] {8,6,7,5,3});
+  for (int i = 0; i < 5; i++)
+    std::cout << p[i] << std::cout
+
+  unique_ptr<vector<int>> p(new vector<int> {8,6,7,5,3});
+  for (int i : *p)
+    std::cout << i << std::endl
+}
+```
+
+# Classes (lec)
+If we could only use a language’ built-in types
+and couldn’t define any of our own, the power of
+the language would be very much restricted to
+what was built-in
+
+can define your own type aliases like so, but only gives a new name to an existing type
+```c++
+using Row = vector<int>; // Row is now an alias for vector<int>
+```
+
+### Classes
+create your own type in C++ by defining a class
+```c++
+struct Student_info {
+  string name;
+  double midterm, final;
+  vector<double> homework;
+}; // Semicolon is required!
+
+class Student_info {
+public:
+  string name;
+  double midterm, final;
+  vector<double> homework;
+};
+```
+the only difference between a `class` and a `struct` is the visibility of members
+* for `struct`, fields and methods are `public` by default
+* for `class`, fields and methods are `private` by default
+
+* `public` members are visible to everyone
+* `protected` members are visible to subclasses
+* `private` members are only visible within the class
+
+example
+```c++
+class A {
+  void f() {
+    cout << pub; // OK
+    cout << prot; // OK
+    cout << priv; // OK
+  }
+  public:
+    int pub;
+  protected:
+    int prot;
+  private:
+    int priv;
+};
+
+class B : public A {
+  void g() {
+    cout << pub; // OK
+    cout << prot; // OK
+    cout << priv; // Error
+  }
+};
+
+void h(A a)
+{
+  cout << a.pub; // OK
+  cout << a.prot; // Error
+  cout << a.priv; // Error
+}
+```
+
+can also add __member functions__ (__methods__) to go along with the __data members__ (__fields__)
+```c++
+struct Student_info { // In header
+  string name;
+  double midterm, final;
+  vector<double> homework;
+  // Method to calculate the student’s grade
+  double grade() const {
+    return (midterm + final + median(homework))/3;
+  }
+};
+```
+
+* __note__: the code for how to calculate the grade was put right inside the class definition; it is also possible to put it in a separate file (to avoid cluttering the interface)
+```c++
+// In .h file
+struct Student_info {
+  string name;
+  double midterm, final;
+  vector<double> homework;
+  double grade() const;
+};
+
+// In .cpp file
+double Student_info::grade() const
+{
+  return (midterm + final + median(homework))/3;
+}
+```
+
+access methods and fields with the `.` operator
+```c++
+Student_info s;
+s.name = "Mike";
+s.midterm = 70;
+s.final = 85;
+s.homework.push_back(60);
+s.homework.push_back(75);
+cout << s.grade();
+```
+
+### Static vs Dynamic Types (lec)
+a program uses expressions to refer to objects in memory
+* `static` type is the type of the expression (known at compile time)
+* `dynamic` type is the type of the actual object referred to by the expression (only knowable at run-time)
+static and dynamic type generally only differ due to inheritance
+
+```c++
+int i = 5; // S = int, D = int
+Gorilla g; // S = Gorilla, D = Gorilla
+Animal &a = g; // S = An&, D = Gor
+Animal a2 = g; // Oops! Can’t copy a Gorilla into an Animal
+unique_ptr<Animal> ua = make_unique<Gorilla>(); // Static type of *ua is Animal but Dynamic is Gorilla
+ua = make_unique<Falcon>(); // Now S = Animal, D = Falcon
+```
+
+### inheritance (lec)
+can use inheritance to model an "isA" relationship
+* `struct Animal {/* ... */};`
+* `class Gorilla : public Animal {...};`
+  * This means that a `Gorilla` “isA” `Animal` and can be referred to by `Animal` references
+
+### Virtual vs non-virtual method (lec)
+* __virtual method__ uses the dynamic type
+* __non-virtual method__ uses the static type
+
+```c++
+struct Animal {
+  void f() { cout << "animal f"; }
+  virtual void g() { cout << "animal g"; }
+};
+
+struct Gorilla : public Animal{
+  void f() { cout << "gorilla f"; }
+  void g() { cout << "gorilla g"; }
+  void h() { cout << "gorilla h"; }
+};
+
+void fun() {
+  unique_ptr<Gorilla> g = make_unique<Gorilla>;
+  Animal &a = *g;
+  a.f(); // Not virtual: Animal’s f
+  a.g(); // Virtual: Gorilla’s g
+  a.h(); // Error: h is not in animal
+  (*g).f(); (*g).g(); (*g).h(); // Gorilla’s f, g, and h
+}
+```
+
+### `->` operator
+
+you might frequently use expressions like `(*g).f()` to call the `f` method of the object managed by `unqiue_ptr g`
+* `(*g)` is a reference to the Gorilla object managed by g
+* `(*g).f()` calls its f method
+* this is so common that there is a special shortcut notation for it
+```c++
+g->f(); // same as (*g).f()
+```
+
+### Constructors
+
+* `make_unique<Student_info>()` leaves `midterm`, `final` with nonsense values.
+(Use the original version. The one with the “pure virtual” method can’t be new’ed!)
+* but not `homework`!
+* fix as follows
+```c++
+struct Student_info {
+  Student_info() : midterm(0), final(0) {}
+};
+```
+
+# REEL LEARNING (YOUTUBE)
+
+# Scope, Lifetime & Call Stack
+https://www.youtube.com/watch?v=1cPSeJLspT8&list=PL3345A50B73C26A6F&index=16
+
+* __scope__: where in a program a variable can be reference (e.g. "the scope of a variable")
+* __lifetime (duration)__: how long a variable exists in memory
+
+__local variables__: variables that are declared within a function or block of code
+* their _scope_ is limited from the point of declaration to the end of the function or block in which they are declared
+* their _lifetime_ is from entering the function/block to the termination of the function/block
+
+__global variables__: variables declared outside of any function
+* accessible in every scope
+* persist in memory for the duration of the program
+
+When the c++ compiles a program, it will allocated space in memory for different things:
+* __code__ (text...the "code store")
+* __static__
+* __globals__
+* __heap__ (free store)
+* __stack__
+
+* when you call a function, a portion of the _stack_ memory is allocated for that function
+
+# Header Files
+https://www.youtube.com/watch?v=jz0k_uHbwnk&list=PL3345A50B73C26A6F&index=19
+
+Often you will write utility functions you will want to reuse
+
+__header file__: contains interface information; often times, it includes function headers and constants
+
+To create a header file:
+1. create a source file (e.g. `MyMathFunctions.cpp`); include your function headers, your functions, and constants. it has no main function though so it can't be run
+2. can create an interface type file where you can get the function declarations, constants, etc. and we can include that information in a main.cpp.
+3. convention is to name the header file the same as the source file containing the information: `MyMathFunctions.h` (use default header file template)
+
+```c++
+/*
+ * MyMathFunctions.h
+ *
+ * Created on: ..
+ * Author: ..
+ */
+
+#ifndef MYMATHFUNCTIONS_H_ // if not defined
+#define MYMATHFUNCTIONS_H_ // then define this symbol; this makes sure that we don't include the same header file more than once
+
+const double PI = 3.14159;
+
+int getPosInt(string);
+double areaOfCircle(int r);
+double volOfSphere(int r);
+
+#endif /* MYMATHFUNCTIONS_H_ */
+```
+
+4. now, include the header file in main.cpp by writing the statement at the top: `#include "MyMathFunctions.h"`
+
+ The `#include` statements for our own header files is different than that for those in the standard library:
+* including our own header files will have double quotes `""`
+* including header files from the c++ standard library will have angle brackets `<>`
+
+There is more to be said about this.
+
+# Introduction to Pointers
+https://www.youtube.com/watch?v=W0aE-w61Cb8&list=PL3345A50B73C26A6F&index=23
+
+__pointer__: data type that _points_ to another value stored in memory
+* declaring: `int* p;`, `int *p`, `string* q;`
+
+examples (variable name / value / address)
+* `p` / `0003` / `0000`
+*  /  / `0001`
+*  /  / `0002`
+* `x` / `25` / `0003`
+> `p` is an `int*` (integer pointer), meaning it is capable of storing addresses holding integer data
+> `x` is an `int` (integer), meaning it is capable of storing integer data
+
+## pointer operations
+
+* `&` address of operator (address-of operator)
+* `*` contents of operator (dereference operator)
+  * allows us to get the value stored at the address held by the pointer
+
+examples
+* `int x = 25;`
+* `int* xPtr = &x;`
+
+pointers are used to 
+* refer to new memory reserved during program execution
+* refer to and share large data structures without making a copy of the structurs
+* specify relationships among data -- linked lists, trees, graphs, etc.
+
+# Pointers and Dynamic Memory in C++ (Memory Management Video)
+
+https://www.youtube.com/watch?v=CSVRA4_xOkw
+
+When a program compiles
+* __code__: set aside for the instructions
+* __static__/__globals__: for e.g. global variables 
+* __heap__ (free store): memory left over after allocating for the code, static/global/ and stack areas. In C++, we have to manage this memory manually. It is our responsibility to manage this memory
+* __stack__: set aside for all the local variables, return values, returns addresses, etc. for each time we call a function; the stack grows and shrinks
+
+__NOTE__: good c++ code avoids using this kind of code, but here is how you do it anyway:
+allocating memory on heap with `new`
+* `new <type>`...e.g. `new vector<int>`
+* `new int;` will allocate memory on the heap for a new `int` (in many systems this is 4 bytes but changes with compiler/processor)
+* the value stored there is unknown and or not meaningful
+
+* the `new` keyword not only allocates memory on the heap, but it also returns the memory address of the location to the allocated memory on the heap
+  * we know with a pointer we can hold an address, so we can do: `int* p = new int;`
+  * `p` is a variable that gets stored on the stack (the pointer). it holds the address to the new int on the heap
+  * can manipulate what that int holds with: `*p = 5;`
+
+__IMPORTANT__: it is very bad to create something on the heap that you can no longer reference. This is because if we do this a lot we can run out of heap space. So, you should delete the object first before you lose the reference.
+example
+```c++
+int* p = new int;
+*p = 5;
+p = new int(10); // THIS IS BAD!!! because we've created something on the heap we can no longer reference; that's bad
+```
+* prevent the above problem by freeing up the space on the heap use the `delete` keyword:
+* `delete p` deletes what `p` is pointing to on the heap; it does not delete `p` on the stack
+* `p` will only be deleted off the stack when the function closes
+```c++
+int* p = new int;
+*p = 5;
+delete p; // p is now a dangling pointer; exists on the stack but does not point to anything
+p = new int(10); // p now points to an int on the heap
+```
+
+__IMPORTANT__: a very common way programmers create garbage that should be avoided occurs when 
+
+* __`new`__: allocate space dynamically on the heap (free store). returns the address of the allocated memory
+  * use a __`pointer`__ to references the memory allocated on the heap
+* __`delete`__: to deallocate memory on the heap
+* __garbage__: created when we can no longer access previously allocated memory on the heap
+* __dangling pointer__: pointer that no longer points to something valid on the heap. Not necessarily a bad thing. always happens whenever we delete something on the heap with the `delete` keyword. At that point, it should be re-assigned to another location (or to be assigned to `NULL`)
+
