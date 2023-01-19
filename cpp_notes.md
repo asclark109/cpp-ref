@@ -384,12 +384,12 @@ std::cout << "sizeof int : " << sizeof(int) << std::endl;
 std::cout << "sizeof int : " << sizeof(truck_count) << std::endl;
 ```
 
-## int
+## `int`
 
 * typically occupies 4 bytes (32-bits) or more in memory
 * whether an int is signed or unsigned, it will still occupy the same amount of space in memory
 
-### integer modifier (__`signed`__, __`unsigned`__, __`short`__, __`long`__)
+## integer modifier (__`signed`__, __`unsigned`__, __`short`__, __`long`__)
 
 * can make ints __`signed`__ or __`unsigned`__, which denotes whether to represent positive or negative or only positive integers
 * `unsigned int`: can only be positive
@@ -408,7 +408,7 @@ Can combine modifiers; for example: `signed long int myNumber {1234};`
 These modifiers only work on integral types (data types in which you can store decimal numbers)
 * can use `sizeof()` to confirm the memory occupied
 
-### Fractional Numbers (__`float`__, __`double`__, __`long double`__)
+## Fractional Numbers (__`float`__, __`double`__, __`long double`__)
 
 __Floating Point Types__
 * `float`: 4 bytes, 7 digits precision (number of bits you can represent)
@@ -431,7 +431,7 @@ Floating point numbers are stored in memory using a specific floating point numb
 * if you take a floating point number and divide by 0, you will get `infinity(+/-)`
 * `0.0/0.0` gives `NaN`; avoid this
 
-### boolean
+## boolean (`bool`)
 
 * a `bool` occupies 8 bits (1 byte) in memory; this seems wasteful, since a byte can store 256 states
 * if you are working on a device with limited memory, there are techniques to store the boolean with less memory
@@ -441,7 +441,7 @@ example of bracket initialization:
 bool redLight {true};
 ```
 
-### Characters and Text
+## Characters and Text (`char`)
 
 * `char` data type is meant to store a single character; is wrapped in single quotes `'a'`
 * occupies 1 byte of memory. Since 1 byte can represent 256 states, 1 byte is enough memory to represent the 128 __ASCII__ characters
@@ -453,7 +453,7 @@ char value = 65; // compiler will interpret 65 as a char, which represents A in 
 static_cast<int>(value) // transform char into an int 65 <= 'A'
 ```
 
-### __`auto`__
+## __`auto`__
 
 __`auto`__ is a keyword that tells the compiler to deduce the type
 
@@ -469,8 +469,770 @@ auto var7 {123ul}; // unsigned long
 auto var8 {123ll}; // long long
 ``` 
 
-### Assignments
+## Assignments
 
+* `variablename = newvalue;`
+* careful of assignments on variables declared with `auto` (e.g numeric types).
+
+```c++
+int var{123}; // declare and intialize
+var = 55; // assignment
+bool state{false};
+state = true;
+```
+
+```c++
+auto var3{333u};
+var3 = -22; // danger! will get compile-time error, but you may not! compiler may do its best and put in a garbage value 
+```
+
+# Operations on Data
+
+## basic operations (`+` `-` `*` `/` `%`)
+
+* note: integer division truncates the remainder (`31/10==3`)
+
+```c++
+int product {num1 * num2};
+int other_product = num1 * 2 * num2;
+
+int quotient {num1 / num2};
+int other_product = num1 * 2 * num2;
+```
+
+## Precedence and Associativity
+
+multiple operators are executed by a specific precedence:
+* __Precedence__: which operation to do first
+* __Associativity__: which direction or which order
+* it is best to make the intent in your code as clear as possible by clearly using `()` to indicate which operations to do first--rather than rely on precedence rules and make the evaluation ambiguous to the reader.
+* there is a C++ operator precedence table with different precedence: https://en.cppreference.com/w/cpp/language/operator_precedence
+![alt text](pics/p1.JPG "Title")
+
+## Postfix and Prefix addition, subtraction (`val++`,`++val`)
+
+* in __postfix__ addition/subtraction, the expression evaluates first, then the expression increments (`val++`,`val--`)
+* in __prefix__ addition/subtraction, the expression increments first, then the expression evaluates (`++val`, `--val`)
+* the _postfix_, _prefix_ operations only exist for addition, subtraction
+```c++
+int value {5};
+value = value + 1;
+value++; // postfix addition; evaluates first, then increments
+++value; // prefix addition; increments first, then evaluates
+
+value = value - 1;
+value--; // postfix subtraction; evaluates first, then decrements
+--value; // prefix subtraction; decrements first, then evaluates
+```
+
+## Compound Assignment Operators (`+=`, `-=`, `*=`, `/=`, `%=`)
+
+* Compound assignment operators allow you to shorthand an operation with an assignment
+```c++
+int val {4};
+val+=1; // val = val+1; 4+1 == 5
+val-=1; // val = val-1; 5-1 == 4
+val*=2; // val = val*2; 4*2 == 8
+val/=2; // val = val/2; 8/2 == 4
+val%=3; // val = val%3; 4%3 == 1
+```
+
+## Relational Operators (`<`, `<=`, `==`, `>=`, `>`, `!=`)
+
+## Logical Operators (`&&`, `||`, `!`)
+
+## Output Formatting (`<ios>`, `<iomanip>`)
+
+* `std::endl` adds a newline character; similar but not the same thing as `\n`
+* `std::flush` sends whatever is in the output buffer to the terminal. causes immediate sending of data to the device connected to the stream
+  * what is a buffer? when you send something to e.g. `std::cout` it does not go straight to the terminal. It goes to an intermediary buffer. It is like a storage unit in which data goes before going to the terminal.
+* `std::setw()` sets a width for whatever text you want to send
+* `std::right` sets a justification to the right
+* `std::left` sets a justification to the right
+* `std::internal` sets an internal justification
+* `std::setfill('-')` sets a fill character
+* `std::boolalpha` shows boolean output in the form of true and false; normally bools show as 1's and 0's
+* `std::showpos` to show or hid + sign for positive numbers
+* `std::dec`, `std::oct`, `std::hex` shows numerics in different number systems
+* `std::showbase` shows the base (ie the number system) of any numerics printed
+* `std::uppercase` has data printed out in uppercase
+* `std::scientific`, `std::fixed` shows numbers in scientific notation, fixed-format notation
+* `std::setprecision` sets the number of digits to print out for a floating point number. Default is 6.
+* `std::showpoint` show trailing zeros if necessary
+![alt text](pics/p2.JPG "Title")
+
+```c++
+std::cout << std::setw(10) << "lastname" << std::setw(10) << "firstname" << std::endl;
+std::cout << std::setw(10) << "clark" << std::setw(10) << "austin" << std::endl;
+```
+
+## determine limits of what is represented by a data type`<limits>`
+
+helpful library for seeing the limits of what can be represented by data types
+* `std::numeric_limits<T>::min()`: smallest positive number you can represent in type `T`
+* `std::numeric_limits<T>::max()`: largest positive number you can represent in type `T`
+* `std::numeric_limits<T>::lowest()`: lowest negative number you can represent in type `T`
+```c++
+// e.g. floating point
+std::numeric_limits<float>::lowest() // -3.40282E+38
+std::numeric_limits<float>::min() // 1.17549E-38
+std::numeric_limits<float>::max() // 3.40282E+38
+
+// e.g. signed integer
+std::numeric_limits<float>::lowest() //
+std::numeric_limits<float>::min() // -32768 ... will be negative if using signed integer
+std::numeric_limits<float>::max() // 32767
+
+// e.g. unsigned integer (short)
+std::numeric_limits<float>::lowest() //
+std::numeric_limits<float>::min() // 0
+std::numeric_limits<float>::max() // 65535
+```
+
+## Math Functions (`<cmath>`: `floor()`, `ceil()`, `abs()`, `pow()`, `exp()`, `...`)
+
+```c++
+double x {-4000};
+std::abs(x);
+std::exp(x); // e^x
+std::pow(x,2); // x^2
+std::log(x); // base e log
+std::log10(x); // base 10 log
+std::sqrt(x);
+std::round(x);
+std::sin(x);
+std::cos(x);
+std::tan(x);
+// ... other trig functions
+
+```
+
+## Weird Integral Types (dtypes w/ <4 bytes `char`, `short int`)
+
+Cannot do arithmetic operations on datatypes represented by fewer than 4 bytes in size
+* `int` was chosen as the smallest type for which they can do arithmetic operations.
+* `char` is 1 byte in size
+* `short int` on most processors is 2 bytes
+* if you want to do arithmetic operations on these types, compilers are smart enough to implicitly convert these types from the smaller types to ints
+```c++
+short int var1 {10}; // 2 bytes
+short int var1 {20};
+char var3 {40}; // 1 byte
+char var4 {50};
+auto result1 = var1 + var2; // conversion to int; compiler has result be an int
+auto result2 = var3 + var4; // conversion to int; compiler has result be an int
+```
+* the same behavior is present on other operators like bitwise shift operators (`>>`, `<<`)
+
+# Flow Control
+
+## `if`
+
+```c++
+if(condition){ // condition is any bool expression or variable
+  //...
+}
+```
+
+## `else`
+
+```c++
+if(condition){
+  //...
+} else {
+  //...
+}
+```
+
+## `else if`
+
+```c++
+if(condition){
+  //...
+} else if (condition2) {
+  //...
+} else {
+  //...
+}
+```
+
+## `switch`
+
+* a `break` statement after each case is very important. It stops processing the switch blcok when a successful case has been found. If the break statement is not there, all the cases following the current case will be executed.
+* the condition inside a switch statement MUST be an _integral type_ or _enum_: `int`, `long`, `unsigned short`, etc
+```c++
+int Pen {1};
+int Marker {2};
+
+int tool {Pen};
+switch (tool) {
+  case Pen: {
+    // ...
+  }
+  break; // NEED THIS ELSE INNER BODY WILL CONTINUE TO EXECUTE
+  case Marker: {
+    // ...
+  }
+  break;
+  // ...
+  default: {
+    // ...
+  }
+}
+```
+
+## ternary operator (`... ? ... : ...`)
+
+* __ternary operator__: shorthand notation for an if-else clause
+* has form `result = (condition) ? option1 : option2;`
+* __ternary intialization__: using ternary operator in intialization: `int speed {fast ? 300 : 150};`
+
+# Loops
+
+## `for` loop
+
+pillars of any loop
+* iterator
+* starting point
+* test (controls when the loop stops)
+* increment (decrement)
+* loop body
+
+basic structure
+```c++
+for (unsigned int i{}; i< 10; ++i) {
+  // ...
+}
+```
+1. initialize `i`
+2. run test: if true jump into loop body
+3. run loop body
+4. execute incrementation part
+5. jump back to (2)
+
+* can use `size_t` to declare iteration variable.
+* `size_t`: type alias for some unsigned int representation (may be ~8 bytes on a system)
+```c++
+for (size_t i{0}; i<10; ++i){
+  //...
+}
+```
+
+* can leave out curly braces `{}` if you have only one statement to run in the loop
+```c++
+for (size i{}; i<5; ++i)
+  //...
+```
+
+* note, the iterator variable is scoped to only be the body of the loop; declare the iterator variable outside the loop if you want to reference it after the for loop body
+```c++
+size_t j{};
+for ( ; j<10; ++j)
+  // ...
+```
+
+# `while` loop
+
+```c++
+while (condition){
+  // ...
+}
+```
+
+example
+```c++
+const unsigned int COUNT {10};
+unsigned int i {0};
+while (i < COUNT){
+  // ...
+}
+```
+
+## `Do while` loops
+
+* the do-while loop runs the body first, then checks the test
+```c++
+const unsigned int COUNT {10};
+unsigned int i {11}; // initialization
+
+do{
+  // ...
+  ++i; // increment
+} while (i < COUNT); // test
+
+```
+
+# Arrays
+
+## array basics `array[]`
+
+arrays are a way to setup collections in a program. for example, we may want to represent a collection of ints; each int is 4 bytes, or 64 bits.
+* arrays store elements of the same type
+* declare an array: `type arrayname[size];`
+  * it will be filled with garbage values
+* declare and initialize an array with values: `type arrayname[size] {val1, val2, ...};`
+* can declare and initialize the array omitting the size at declaration; size will be inferred: `type arrayname[] {val1, val2, ...};`
+* access an element at a specific index with: `arrayname[idx]`
+* write data into an array with: `arrayname[idx] = newval`
+* use `auto` when looping over an array to make code more adaptable to change
+* can declare an array `const` to prevent writing to the arra
+
+```c++
+int scores[10]; // declares (allocates space in memory
+double salaries[5] = {12.7, 7.5, 13.2, 8.1, 9.3}; // declare and initialize an array with values
+scores[0] = 120; // write data to array
+std::cout << scores[0]; // access data from array
+int classSizes[] {10, 12, 15, 11, 18, 17}; // declare and intialize, omitting size (size will be inferred)
+
+for (auto val: classSizes){
+  // ...
+}
+```
+
+## `range-based` for loop
+
+```c++
+int classSizes[] {10, 12, 15, 11, 18, 17}; // declare and intialize, omitting size (size will be inferred)
+
+for (auto val: classSizes){
+  // ...
+}
+```
+
+## `std::size()`, `sizeof()` with arrays
+
+* query for the size of an array at runtime with `std::size()` (c++17)
+```c++
+int scores[] = {10,12,15,11,18,17,22,23,24};
+std::cout << std::size(scores);
+for (size_t i{0}; i < std::size(scores); ++i)
+  // ...
+```
+
+* before c++17, the `sizeof()` operator was used.
+* `sizeof(array)` returns the entire size of the array
+* `sizeof(array)/sizeof(array[0])` returns the size of the array because total memory / memory of 1 element == number of elements in the array
+```c++
+int scores[] = {10,12,15,11,18,17,22,23,24};
+size_t count {sizeof(scores)/sizeof(scores[0])};
+for (size_t i{0}; i < count; ++i)
+  // ...
+```
+
+* nowadays, we can just use a range-based for loop to iterate over elements
+
+## character array `char array[]`, null termination strings `\0`,
+
+* character arrays are similar to other arrays for the most part:
+```c++
+char message[5] {'H','e','l','l','o'};
+for (auto c : message){
+  // ...
+}
+message[0] = 'h';
+```
+
+* character arrays are a little special in that the arrays themselves can be directly printed to the console without printing:
+```c++
+std::cout << "message: " << message;
+```
+* sometimes, this won't do what you expect because only proper C strings can be printed on the console
+* a proper C string ends with `\0`, the __null termination string__: it tells C++ that we have hit the end of the string when e.g. printing to console
+* if `\0`, it may sometimes print fine; other times, it may print garbage characters. The `\0` indicates the end of the string has been reached
+```c++
+char message[5] {'H','e','l','l','o','\0'}; // add '\0' to ensure the string will be printed properly
+std::cout << message;
+```
+
+* if you initialize a char array and give it values, the remaining values will be filled with `\0`:
+```c++
+char message2[6] {'H','e','l','l','o',}; // last element ends up being '\0'
+std::cout << message;
+```
+
+* if you initialize a char array with a string value (double-quotes) an implicit `\0` character is appended to the end of the string to make it a c string
+```c++
+char message4 [] {"Hello"}; // implicit '\0' character appended to the end of the string,
+                            // making it a c string
+```
+
+## bounds of an array
+
+when you declare an array, a block of unused memory will be found and allocated to store the (elements in the) array
+* indexing out of bounds is still allowed by the compiler, but you should not do so because the memory location may
+be used for some other purpose. other programs may modify the data you have written outside the bounds, or the program
+may read bogus data at a later time. You may even corrupt data used by other parts of your program
+
+# Pointers
+
+variables you use in code live in an address in memory
+![alt text](pics/p3.JPG "Title")
+
+__pointer__: variable that stores the memory address of another variable
+
+## declare and use pointer (address-of operator `&`, dereference operator `*`)
+
+* declare a pointer with: __`type* ptrName;`__
+* declare and initialize a pointer to be a null pointer: __`type* ptrName {nullptr}`__
+* all pointers take up the same amount of space in memory (are the same size)
+* position of the `*` does not matter when declaring a pointer
+  * can declare with `type* ptr;`, `type * ptr;` or `type *ptr;`. it doesn't matter
+
+```c++
+int* pNumber {}; // can only store an address of a variable of type int
+double* pFracNumber {}; // can only store an address of a variable of type double
+
+// explicitly intialize a null pointer
+int* pNumber1 {nullptr};
+double* pFracNumber1 {nullptr}
+
+// all the same
+int*  pNum2{nullptr}
+int * pNum2{nullptr}
+int  *pNum2{nullptr}
+```
+
+* declare and initialize a pointer with memory address of another variable: `type* ptrName {&var};`
+* `&` the memory __address-of__ operator returns the address of a variable in memory: `&var`
+* `*` the `dereference operator` returns the object (value) held at a specific memory location: `*ptrName`
+```c++
+int var {43};
+int* pVar &{var}; // have pointer hold address of var
+
+int var2 {10};
+pVar = &var2; // have pointer hold address of a different variable
+std::cout << *pVar // 10`
+```
+
+## char pointers (`char*`)
+
+* has similar behavior to pointers to other types
+```c++
+char* pChar{nullptr};
+char charVar {'A'};
+pChar = &charVar;
+```
+
+* char pointers are special because you can intialize them with a string literal
+  * when you do this, the string is going to be expanded into a character array
+  * the pointer points to the location of the first character created by the array
+* as a result, strings can basically be treated as character arrays
+  * however, some compilers will refuse to compile the below expression because the compiler will expand the string into a character array of `const char`, and the pointer declared is not for a `const char` but rather just `char`
+```c++
+char* pMessage {"Hello world!"}; // a char array will be created. pMessage holds mem address of 'H', the first char in the array created
+// may not compile with every compiler because some compilers will expand the string into an array of const char, and the pointer
+// is only for char--not const char
+
+// instead, do this:
+const char* {"Hellow word!"};
+```
+* to be explicit and not run into trouble, instead write `const char* pMessage {"mystr"};`
+
+* note: you can modify a pure array intialized with a string literal
+```c++
+char message2[] {"Hello there"};
+message2[0] = 'T';
+```
+
+## Program Memory Map
+
+workflow: `type up source code --> compiler --> executable --> run executable`
+* the source code (a compiled program) lives in a file on your _hard drive_
+* when you run the program, you create a _process_. compiled program as a list of statements gets loaded into RAM into a dedicated section of memory for the process for storing program instructions (_code_ / _program area_)
+  * so far we have been thinking that the instructions are loaded into our real memory (RAM) on our computer, but that's not the case.
+  * the operating system is running a lot of programs, if the OS loads all the instructions for every program into RAM, we would run out of RAM.
+  * so, the computer uses __virtual memory__: a trick that fools a program into thinking it is the only program running on the OS, and all memory resources belong to it. The view that each program has of its allocated memory is called the __memory map__.
+  * each program is abstracted into a process, and each process has its own memory map and access to the memory range `0 ~ 2^N-1` where N is 32 on 32 bit systems and 64 on 64 bit systems. So each program thinks it owns the entire memory.
+  * so, we have __Real Memory (RAM)__, which is all the memory the computer has, and we have __Virtual Memory (2^N-1)__, which is the memory a program has
+
+* when we compile a program (e.g. on a 64 bit system), we generate a binary file, which will be a representation of how things are going to be layed out in memory in our program
+* if we run the program, it will go through a section of the CPU called the __Memory Management Unit (MMU)__, which transforms between the memory map of each process and the real memory layout we have in RAM
+* so, the entire program is not loaded in real memory by the CPU and MMU. Only parts that are about to be executed are loaded; this makes effective use of real memory, a valuable and lacking resource
+
+
+example: we have 4 processes with their own memory maps (0~2^N-1), which will go through the MMU, and the MMU will assign them sections in the real RAM.
+* __virtual Memory__: the memory map is a standard format defined by the OS. All programs written for that OS must conform to it. It is usually divided into some sections. This is why you can't take an executable compiled on windows and run it on a linux system.
+
+Memory Map
+![alt text](pics/p4.JPG "Title")
+* we have `0~2^N-1` address locations
+* __stack__: where local variables are stored
+* __heap__: additional memory that can be queried for at runtime; important for dynamic memory
+* __text__: load the actual binary of the program so the CPU can execute it
+
+## Dynamic Memory Allocation
+
+This is a way to use heap storage for a c++ program
+* so far, we've used pointers to refer to locations of variables living in stack memory
+* generally, it is REALLY badd to use a pointer that is not initialized
+```c++
+int* pNum; // contains junk address: could be anything
+*pNum = 55; // writing into junk address. BAD!
+```
+* do NOT use a pointer initialized to null
+```c++
+int* pNum3 {}; // intialized with pointer equivalent of zero: nullptr. a pointer pointing nowhere
+*pNum = 33; // BAD! CRASH
+```
+
+So:
+1. initialize your pointers before using them. Don't use a pointer that you did not initialize
+2. don't try to work with a pointer that is a `nullptr`
+
+Differences between stack and heap:
+
+__stack__
+* memory is finite
+* developer isn't in full control of the memory lifetime
+* lifetime is controlled by the scope mechanism
+__heap__
+* memory is finite
+* developer is in full control of when memory is allocated and when it is released
+* lifetime is controlled explicity through `new` and `delete` operators
+
+> if you can avoid using _heap_ memory, you should. Use stack memory as much as possible
+
+## creating a variable with limited lifetime using `{}` to scope
+
+```c++
+int main(){
+  {
+    int localScopedVar {33};
+  }
+  // localScopedVar no longer exists
+  return 0;
+}
+```
+
+## allocate dynamic memory (`new`)
+
+use `new` keyword, which allocates a portion of memory and returns the address of the newly allocated space
+```c++
+// initialize pointer with dynamic memory.
+// dynamically allocate memory at runtime and make a pointer point to it
+int* pNum {nullptr};
+pNum = new int; // dynamically allocate space for a single int on heap.
+                // this memory bellongs to our program from now on.
+                // the system can't use it for anything else, until we return it
+                // after this line executes, we will have a valid memory location allocated.
+                // the size of teh allocated memory will be such that it can store
+                // the type pointer to be the pointer
+*pNum = 55; // writing to dynamically allocated memory
+```
+
+* can declare and initialize pointers with `new` keyword
+```c++
+int* pNum1 {new int};
+int* pNum2 {new int(22)};
+int* pNum3 {new int{23}};
+// ...
+delete pNum1;
+pNum1 = nullptr;
+delete pNum2;
+pNum2 = nullptr;
+delete pNum3;
+pNum3 = nullptr;
+```
+
+* note: it is REALLY bad to call delete twice on a pointer
+  * will lead to undefied behavior. program may crash. avoid this like the plague.
+
+example of stack vs heap
+```c++
+int main(){
+  {
+    int localScopedVar {33}; // only lives in the scope of the brackets; removed from stack memory when } reached
+    int* localPtrVar = new int;
+  }
+  // localScopedVar no longer exists
+  // still have access to the memory that localPtrVar was pointing to
+  return 0;
+}
+```
+
+## Releasing and resetting dynamic memory (`delete`)
+
+use `delete` keyword, which frees the memory at the location to the operating system
+```c++
+int* pNum{nullptr};
+pNum = new int;
+// ... use memory
+delete pNum; // returns the memory to the operating system
+pNum = nullptr; // good practice is to set a pointer to nullptr to indicate there is no longer valid data at that location
+```
+
+## Dangling Pointer
+
+__Dangling Pointer__: pointer that doesn't point to a valid memory address. Trying to dereference and use a dangling pointer will result in undefined behavior
+* a dangling pointer is ALWAYS created when after removing memory from the heap
+```c++
+int* pNum {new int{3}};
+//...
+delete pNum; // freed memory on heap. pNum is now a dangling pointer!
+```
+
+3 kinds of dangling pointers
+* __uninitialized pointer__
+* __deleted pointer__
+* __multiple pointers pointing to same memory__
+
+_non-initialized pointer_
+```c++
+int* pNum; // dangling uninitialized pointer
+std::cout << pNum << std::endl;  // junk value
+std::cout << *pNum << std::endl; // might lead to CRASH
+```
+
+_deleted pointer_
+```c++
+int* pNum {new int{34}};
+// ...
+delete pNum; // freed memory on heap. pNum is now a dangling pointer!
+std::cout << *pNum << std::endl; // might lead to CRASH
+```
+
+_multiple pointers pointing to same memory_
+```c++
+int* pNum1 {new int{53}}; 
+int* pNum2 {pNum1};  // pNum2 points to same object on heap
+// ...
+delete pNum1; // freed memory on heap. now we have 2 dangling pointers!
+std::cout << *pNum1 << std::endl; // CRASH!
+std::cout << *pNum2 << std::endl; // CRASH!
+```
+
+## Remedies to Dangling Pointers
+
+1. initialize your pointers; when you declare a pointer, immediately initialize it. if you don't know what to initialize it with, put in `nullptr` first and later put in an actual address. This also allows programmers to check a pointer against `nullptr` to see if the pointer contains something valid before using it
+2. reset pointers to `nullptr` after you `delete` them in memory (always set a pointer to `nullptr` after a `delete` call)
+3. for multiple pointers to same address, make sure the owner pointer is very clear. choose one pointer to be the master of the controller of the memory. all other pointers are going to be slaves. They can use that memory, but they don't have the task of releasing that memory
+
+1. _intializing pointers_
+```c++
+int* pNum1{}; // good. initializes with nullptr
+int* pNum2{new int{56}} // good. initializes with 56
+
+// check for nullptr before use
+if(pNum != nullptr)
+  // ...
+```
+
+2. _resetting pointers to `nullptr` after `delete`_
+```c++
+int *pNum{new int{32}};
+// ...
+delete pNum;
+pNum = nullptr;
+
+// check for nullptr before use
+if(pNum != nullptr)
+  // ...
+```
+
+3. _designate master pointer_
+```c++
+int* pNum1 {new int{382}}; // say pNum1 is the master pointer
+int* pNum2 {pNum1};
+// ...
+delete pNum1; // master releases memory
+pNum1 = nullptr;
+
+// only use slave pointers when master pointer is valid!!!
+if (!(pNum1 == nullptr))
+  std::cout << pNum2 << std::endl;
+```
+
+## when `new` fails (`try-catch`, `exceptions`)
+
+`new` fails very rarely in practice, and you'll see many programs that assume that it always works and don't check for memory allocation failure in any way
+* depending on the application, failed memory allocations can be very bad, and you need to check and handle them.
+
+```c++
+int* lotsOfInts {new int[1000000000000]}; // may give error about exceeding array size
+// use huge loop to try and exhaust the memory capabilities of your system.
+// when new fails, your program is going to forcefuly terminate.
+for (size_t i{}; i<100000000; ++i){
+  int* lotsOfInts2 {new int[100000]};
+}
+```
+
+handle this issue
+1. through exception mechanism. a built-in way to check for errors and handle them
+2. can `std::nothrow` setting to not throw an exception and instead give a `nullptr`
+
+1. _exception mechanism_
+```c++
+// handle the problem in a way that makes sense for the application.
+// for example, if you were trying to allocate memory to store color information
+// for your application, and allocation fails, you could opt for showing some
+// feedback message to the user and rendering your app in black/white
+for (size_t i{}; i<10000000; ++i){
+  try {
+    int* lotsOfInts {new int[100000]};
+  } catch(std::exception& ex){
+    std::cout << "caught exception ourselves: " << ex.what() << std::endl;
+  }
+}
+```
+
+2. _`std::nothrow`_
+```c++
+for (size_t i{}; i<10000000; ++i){
+  int* lotsOfInts {new(std::nothrow) new int[100000]};
+
+  if (lotsOfInts == nullptr){
+    // don't try to dereference and use lotsOfInts in here.
+    // you'll get UB. No memory has reall ybeen allocated here.
+    // it failed and returned nullptr because of teh std::nothrow setting
+    std::cout << "mem allocation failed" << std::endl;
+  } else {
+    std::cout << "mem allocation succeeded" << std::endl;
+  }
+}
+```
+
+## Null pointer safety
+
+__null pointer safety__: refers to practices that make sure you are working with pointers containing valid memory addresses
+* can confirm a pointer points to a valid memory address with a null-pointer check
+
+_verbose nullptr check_
+```c++
+// verbose nullptr check
+int* pNum{}; // initialized to nullptr
+if (!(pNum == nullptr)){
+  std::cout << "pNum points to a VALID address" << std::endl;
+} else {
+  std::cout << "pNum points to an INVALID address" << std::endl;
+}
+```
+
+_compact nullptr check_
+```c++
+// compact nullptr check
+int* pNum{}; // initialized to nullptr
+if (pNum){ // pointer gets implicitly converted into a boolean expression
+  std::cout << "pNum points to a VALID address" << std::endl;
+} else {
+  std::cout << "pNum points to an INVALID address" << std::endl;
+}
+```
+
+* __Note__: it is safe to call `delete` on a pointer containing `nullptr`
+```c++
+int* pNum {}; // initialized to nullptr
+delete pNum; // this won't cause any problem if pNum contains nullptr
+
+// so, no need to overdo with something like
+if(pNum){
+  delete pNum;
+  pNum = nullptr;
+}
+```
+
+## Memory Leaks
+
+__Memory Leak__: when you lose access to memory that was dynamically allocated
 
 
 # SHORT GUIDE BELOW:
