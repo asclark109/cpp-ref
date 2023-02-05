@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.golite": "go",
+        "array": "cpp"
+    }
+}

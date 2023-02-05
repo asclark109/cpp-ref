@@ -656,7 +656,7 @@ if(condition){
 }
 ```
 
-## `switch`
+## `switch`, `break`, `continue`
 
 * a `break` statement after each case is very important. It stops processing the switch blcok when a successful case has been found. If the break statement is not there, all the cases following the current case will be executed.
 * the condition inside a switch statement MUST be an _integral type_ or _enum_: `int`, `long`, `unsigned short`, etc
@@ -731,7 +731,7 @@ for ( ; j<10; ++j)
   // ...
 ```
 
-# `while` loop
+## `while` loop
 
 ```c++
 while (condition){
@@ -865,6 +865,7 @@ may read bogus data at a later time. You may even corrupt data used by other par
 
 # Pointers
 
+## pointer basics
 variables you use in code live in an address in memory
 ![alt text](pics/p3.JPG "Title")
 
@@ -1234,6 +1235,1858 @@ if(pNum){
 
 __Memory Leak__: when you lose access to memory that was dynamically allocated
 
+```c++
+int* pNumber {new int{67}};
+int number{55};
+pNumber = &number; // we have a memory leak now!
+// no longer have a way to release memory because the pointer that was pointing to that memory location has now been repurposed
+
+int* pNumber {new int{55}};
+pNumber = new int{44}; // memory leak!
+
+{
+  int* pNumber {new int{57}};
+} // memory leak when scope closes because pNumber is deleted!
+```
+
+# Dynamic Arrays
+
+__dynamic array__: array allocated on the heap with the `new` operator. can also use `std::nothrew` version of new
+
+```c++
+size_t size{10};
+
+double* pSalaries{ new double[size]}; // will have garbage values
+int* pStudents{ new(std::nothrow) int[size]{}}; // all values initialized to 0
+double* pScores { new(std::nothrow) double[size]{1,2,3,4,5}};
+```
+
+* pointers initialized with dynamic arrays are different from arrays
+* `std::size` does not work on them, and they do not support rnage based for loops
+```c++
+double* temps = new double[size] = {10.0, 20.0,30.0,40.0,50.0,60.0};
+
+for (double temp : temps){
+  std::cout << "temp : " << temp << std::endl;
+}
+```
+* we say a dynamically allocated array has decayed into a pointer
+
+## deleting dynamic arrays
+
+```c++
+delete[] pScores;
+pScores = nullptr; // do this to be a good c++ programmer
+
+delete[] pStudents;
+pStudents = nullptr;
+
+delete[] pSalaries;
+pSalaries = nullptr;
+```
+
+# References
+
+a way to set up aliases for variables that already exist
+* note if a reference is destroyed (e.g. its scope closes), the variable it references does not also get destroyed. a reference does not manage the lifetime of the object it refers to.
+
+## declaring and using references
+
+```c++
+int value {45};
+int& valueRef{value}; // create a reference
+int& valueRef = value; // alternate notation
+```
+
+## references vs pointers
+
+* __pointer__: stores address of a variable; we can go through a pointer to access and modify a variable
+* __reference__: pretty much same thing as a  variable, except that it does not manage the 
+memory lifetime of the variable 
+
+__the differences__:
+* references don't use dereferencing for and reading and writing
+* references can't be changed to reference something else
+* references must be initialized at declarations
+* pointers must go through dereference operator to read/write through pointed to value
+* can be changed to point somewhere else
+* can be declared un-initialized (will contain garbage addresses)
+
+```c++
+double value {12.34};
+double& valueRef {value};
+double* valuePtr {&value};
+double otherValue {100.0};
+
+// legal, but actually changes the value referenced by valueRef to be 100.0
+valueRef = otherValue;
+
+// if valueRef changes now, otherValue remains unchanged.
+valueRef = 333.33;
+```
+
+a reference behaves like a constant pointer, but with a friendlier syntax as they don't require dereferencing to read and write through referenced data.
+
+## references and `const`
+
+### non-const reference
+
+a non-constant reference is the typical kind
+```c++
+// non-const reference
+int age{26};
+int& refAge{age}; // basic
+// can use refAge just like a variable
+// age and refAge refer to the same variable
+```
+
+### const reference
+```c++
+int age{26};
+const int& refAge{age};
+refAge = 30; // Error
+// can't modify original variable
+```
+
+### const pointer
+
+remember a reference by default is just like a constant pointer
+* a constant reference can be achieved with a constant pointer to constant data
+```c++
+int age {20};
+const int* const agePtr{&age};
+*agePtr = 10; // error
+```
+
+# Character manipulation and Strings
+
+## Character manipulation
+
+* `std::isalnum`
+* `std::isalpha`
+* `std::isblank`
+* `std::islower`
+* `std::isupper`
+* `std::isdigit`
+* `std::tolower`
+* `std::toupper`
+
+## C-string manipulation
+
+a less safe way of using strings. avoid
+skipped: https://www.youtube.com/watch?v=8jLOx1hD3_o
+
+## C-string concatenation and copying
+
+a less safe way of using strings. avoid.
+skipped.
+
+## `std::string`
+
+`std::string` is a safe standard library toolset for working with strings
+* with c-strings, you have to remember the size of strings, and the null character
+* `std::string` is a high level type that hides the annoying low-level details involved with C-strings
+```c++
+std::string fullName;
+std::string planet{"earth"};
+std::string letters{5,"e"};
+```
+
+# Functions
+
+## One definition rule
+
+__One definition rule__: definitions can't show up more than once in an entire program or translation unit. Applies to
+* free standing variables
+* functions
+* classes
+* class member functions
+* class static member variables
+The exception to the rule is the definition for a class. it can show up in multiple translation units.
+* for example, we can have a class `Point` in two separate files and can build the files together fine. we can have the same definition for a class appear in two different translation units
+
+## basics
+
+__Function__: reusable piece of code that can take a number of optional inputs and produce some desieable output
+* a function can optionally take parameters
+* a function can optionally return something; it is `void` if it does not return something
+```
+returnType functionName (param1, param2,...){
+  //operations
+  return returnType;
+}
+```
+```c++
+void function1 (){
+  //operations
+}
+
+void function1 (int x1) { // allowed bc signature different
+  //operations
+}
+
+int add(int x1, int x2) {
+  return x1 + x2;
+}
+```
+
+__function signature__: function name + function parameters
+* every function signature in a program must be unique
+
+## implicit conversions in functions
+
+when making a function call, implicit conversions may occur:
+
+```c++
+double f{20.21};
+double g{51.26};
+min(f,g); // takes ints as arguments. will result in narrowing and precision loss
+```
+
+## parameter passing (default copy behavior)
+
+by default, arguments are copied into the function stack when a function is invoked, so you are working with a copy
+```c++
+double incrementMultiply(double a, double b){
+  double res = (++a)*(++b); // this mutates the local copy of a,b but not the a and b in the calling scope that were passed in
+  return result
+}
+```
+
+## function declarations and definitions
+
+sometimes it is more flexible to split the function into it's header and body to keep the code for each in different places. Can separate a function into two parts
+* __declaration (prototype)__: has a return type, function name, parameters, and a semicolon (e.g. `int max(int a, int b);`)
+* a prototype must come before the function call in the file; compilation error otherwise
+* __definition__: has the full implementation
+```c++
+int max(int a, int b); // DECLARATION
+
+int main(){
+  // operations...
+  return 0;
+}
+
+int max(int a, int b){ // DEFINITION
+  if (a>b){
+    return a;
+  }
+  return b;
+}
+```
+
+## function across multiple files: compilation model revisited
+
+basic compilation: compiler compiles a single cpp file into a binary executible
+
+compilation consists of preprocessing, compilation, and linking:
+1. preprocessing
+2. compilation
+3. linking
+
+* say we have multiple cpp source files
+* in __preprocessing__: the compiler looks for all the `#include` statements and performs copy pasting to copy paste in the mentioned code
+```c++
+#include <iostream> // will be deleted and replaced with a lot of copy-pasted source code; this copies everything in the source file into this location.
+```
+* the outcome of the preprocessing phase is the creation of `translation units`
+* in __compilation__, the compiler will generate an `object file` for every translation unit (20 translation units become 20 object files)
+* the __linker__ stitches together object files to create a single executible binary that runs on a specific operating system
+
+example project
+```
+comparisons.h    // contains 2 function declarations
+comparisons.cpp  // implementations
+operations.h     // contains 1 function declaration
+operations.cpp   // implementations
+main.cpp
+```
+* remember the _one definition rule_: the same function implementation can't show up in the global namespace more than once
+* the linker searches for definitions in all translation units (.cpp) files in the project. the function definition doesn't have to live in a .cpp file with the same name as the header (e.g. the definition for a function in `compare.h` could live in `comparisons.cpp`)
+* a translation unit is mostly equivalent to a cpp file
+
+```c++
+// compare.h
+int min(int a, int b);
+int max(int a, int b);
+
+// compare.cpp
+int max(int a, int b){ // definitions do not need to live in header file
+  if (a>b){
+    return a;
+  }
+  return b;
+}
+int min(int a, int b){
+  if (a<b){
+    return a;
+  }
+  return b;
+}
+
+// operations.h
+int incrMult(int a, int b);
+
+// operations.cpp
+int incrMult(int a, int b){
+  return ((++a)*(++b));
+}
+
+// main.cpp
+#include "compare.h" // preprocessor copy-pastes compare.h here;
+                     // this is a preprocessor directive
+#include "operations.h"
+
+int main(){
+  // operations...
+  return 0;
+}
+```
+* it is the linker phase that looks through e.g. `main.cpp`, sees the invocation of a function, and then looks through the translation units to find the function definition; so you will get linker error if the definition does not exist / cannot be found
+
+## passing parameter (by value)
+
+passing a parameter by value: a copy of a variable is made and passed into a function
+* happens by default
+```c++
+void sayAge(int age);
+
+int main(){
+  int age {23};
+  sayAge(age);
+  // age is still == 23
+
+  return 0;
+}
+
+void sayAge(int age){
+  ++age; // local variable (age) is a copy of the variable passed in from the calling scope
+  cout << "my age is " << age << endl;
+  // age copy will be deleted when function scope closes
+}
+```
+
+## passing parameter (by pointer)
+
+passing a parameter by pointer: a copy of a pointer variable is made and passed into a function; we are still making and working with a copy of a variable in the function body, but because we made a copy of the pointer, i.e. the variable holding the memory address of another variable, we can still use that memory address to refer to the existing object, meaning we can mutate it if we want:
+* happens whenever we have a pointer argument; we can use the pointer to mutate and access an underlying, existing object (i.e. the original variable)
+```c++
+void sayAge(int* age);
+
+int main(){
+  int age {23};
+  sayAge(&age);
+  // age is now modified
+
+  return 0;
+}
+
+void sayAge(int* age){
+  ++(*age); // local variable (age) is a copy of the variable passed in from the calling scope, so it is a copy of the memory address, but a copy of a memory address can still be used to access the underlying variable at that memory address. the thing located at location "age" has now changed.
+  cout << "my age is " << *age << endl;
+  // age copy will be deleted when function scope closes (the copy of the pointer passed in)
+}
+```
+
+## passing parameter (by reference)
+
+passing a parameter by reference: the compiler will make a reference variable which will allow the function scope to be able to reference an existing object, meaning we can mutate it if we want:
+* happens whenever we have a reference argument; we can use the reference to mutate and access an underlying, existing object (i.e. the original variable to which the reference refers to)
+* allows us to not have to dereference pointers to e.g. access an existing object
+```c++
+void sayAge(int& age);
+
+int main(){
+  int age {23};
+  sayAge(age);
+  // age is now modified
+
+  return 0;
+}
+
+void sayAge(int& age){
+  ++age; // local reference variable (age) is a new reference variable that allows us to work with a reference to an existing variable in the calling scope. this call mutates the underlying object referred to by age.
+  cout << "my age is " << *age << endl;
+  // the "age" reference variable will be deleted when function scope closes
+}
+```
+
+## input and output parameters
+
+prefixing a parameter with `const` makes it such that e.g. a reference variable may not be modifiable
+```c++
+void maxStr(const std::string& input1, std::string& output); // can't modify 'input1'; can modify 'output' variable
+```
+generally, it is advisable that:
+* output parameters should be passed in such a way that you can modify the arguments inside the function.
+  * accomplish with _pass by reference_ or _pass by pointer_
+* input parameters shouldn't be modifiable from inside a function. the function really needs to get input (read) from the arguments. you can enforce modifications with the `const` keyword
+  * accomplish with _const reference_, _pointer to const variable_, or _const pointer to const variable_
+
+for output parameters, a different approach is to rather return an output from the function, rather than pass an output variable into the function with the intention of having the function store the result in that variable.
+
+__NOTE__: modern compilers commonly take return by value and optimize it out when possible. Rather, the compiler modifies the function behind your back to return by reference, avoiding unnecessary copies. E.g., the compiler has the local variable returned by reference; the memory address of the local variable in the function is the same as the result variable in the calling scope.
+
+## function overloading
+
+function overloading is allowed in C++, which means that multiple functions can be named the same function; they only need to have different signatures
+```c++
+int max(int a, int b);
+// double max(int a, int b); // can't overload by return type
+double max(double a, double b);
+
+```
+* the compiler uses static analysis at compilation to understand which function to call during execution
+* functions can not be overloaded by return type
+
+overloading can be achieved with the:
+* __order of the arguments__ (e.g. `int a, double b` versus `double b, int a`)
+* __number of the arguments__ (e.g. `int a` versus `int a, int b`)
+* __types of the arguments__ (e.g. `int a` versus `double a`)
+
+# Lambda Functions
+
+## basics (declaring, using)
+
+__Lambda function__: mechanism to set up anonymous functions (without names). once set up, they can be given names and can be called, or we can even get them to do things directly.
+
+_lambda function signature_
+```
+[capture_list] (parameters) -> returntype{
+  // function body
+}
+```
+* _capture list_: where you can say what existing variables in the outer scope you want included in the scope of the lambda function
+* _parameters_: where you can pass arguments into your lambda function
+* _returntype_ is optional
+* _function body_: where function body is written
+```c++
+auto func = [](){
+  std::cout << "hello world!" << std::endl;
+};
+func();
+// nothing in capture list, no parameters, assigned to func variable
+// with auto assignment.
+```
+
+can also define and execute a lambda function without even giving it a name
+```c++
+// call lambda function directly after definition
+[](){
+  std::cout << "hello world!" << std::endl;
+}();
+```
+
+example with parameters
+```c++
+auto result = [](double a, double b){
+  return (a+b);
+}(2,4);
+```
+
+can also place definition and execution of a lambda value in a place where e.g. a result is expected
+```c++
+cout << [](double a, double b)->double{return (a+b);}(2,4) << endl;
+```
+
+specifying a return type will lead to implicit type conversions
+```c++
+// prints result of adding ints as a double
+cout << [](int a, int b)->double{return (a+b);}(2,4) << endl;
+```
+
+## capture lists `[]`
+
+__capture list__: allows variables existing in the scope of where a lambda function is defined to be put into the scope of the lambda function
+* default behavior is that a variable is `captured by value` (makes a copy)
+* putting a `&` in front of a variable captures it by reference: `captured by reference` (makes a reference to variable in outer scope)
+* Capture everything in a context by value with `[=]`
+* Capture everything in a context by reference with `[&]`
+```c++
+double a{20};
+double b{32};
+
+auto func = [a,b](){ // capture a,b by value (a copy)
+  return a+b;
+};
+func(); // a,b unchanged in this scope
+```
+
+```c++
+double a{20};
+double b{32};
+
+auto func = [&a,&b](){ // capture a,b by reference
+  return a+b;
+};
+func(); // a,b have changed in this scope
+```
+```c++
+double a{20};
+double b{32};
+
+auto func = [=](){ // capture everything by value
+  return a+b;
+};
+func();
+```
+
+# Function Templates
+
+## basics
+
+Use __function templates__ to remove code repitition; function templates help with this
+* whereever the compiler sees invocations of the template function, it will look at the types used
+in that function call to generate an overloaded method to support that type
+* function templates are NOT actual c++ code; rather, they are recipes for the compiler to generate code
+* the real c++ function generated by the compiler is called a __template instance__
+* a template instance will be reused when a similar function call (argument types) is issued. No duplicates are generated by the compiler
+* the arguments passed to a function template must support the operations that are done in the body of the function
+```c++
+// this template below allows you to define a generic maximum function
+// for each invocation of this function, the compiler will perform code generation
+// of the necessary function for you (i.e. it will create multiple overloads)
+template <typename T>
+T maximum(T a, T b){
+  return (a > b) ? a : b; // a and b must support the > operator. Otherwise, hard ERROR
+}
+
+int main(){
+  int a{10};
+  int b{23};
+  double c{34.7};
+  double d{23.4};
+  std::string e{"hello"};
+  std::string f{"world"};
+
+  maximum(a,b); // int version created
+  maximum(c,d); // double version created
+  maximum(e,f); // string version created
+  return 0;
+}
+```
+* `T` is an example of a symbol that acts as the place holder for the type
+
+## Type deducation and explicit arguments `<>`
+
+__template type deduction__: the mechanism the compiler uses to deduce the type it would use to setup the template instance from the arguments passed to a function call (to a function template)
+* automatic template type production can sometimes lead to problems, so explicit type deduction can increase clarity
+* to force a compiler to create a certain kind of template instance, use the `<type,...>` with the function call
+* __template parameter__: what is written in the template definition (e.g. `T a, T b`)
+* __template arguments__: the arguments involved in the function call to the template function (e.g. `maximum(c,d)`)
+```c++
+template <typename T>
+T maximum(T a, T b){
+  return (a > b) ? a : b; // a and b must support the > operator. Otherwise, hard ERROR
+}
+
+int main(){
+  int a{10};
+  int b{23};
+  double c{34.7};
+  double d{23.4};
+  std::string e{"hello"};
+  std::string f{"world"};
+
+  auto max1 = maximum<double>(c,d); // explicitly say that we want double version called. 
+                                    // will create this function: double maximum(double a, double b)
+  auto max2 = maximum<double>(a,c); // works, even if parameters of different types.
+                                    // since a is an int, there will be an implicit type conversion of a to a double first.
+                                    // then the double maximum(double a, double b) will be used
+  auto max3 = maximum<double>(e,f); // Error : can't convert std::string to double
+  return 0;
+}
+```
+
+## Template Type Parameters by value `T`, by reference `&T`
+
+By default, template accept arguments by value `T`:
+```c++
+template <typename T>
+T maximum(T a, T b){ // accepts variables by value, returns variable by value
+  return (a > b) ? a : b;
+}
+```
+* a template can accept arguments by reference instead `&T`
+```c++
+template <typename T>
+const &T maximum(const &T a,const &T b){ // accepts variables by reference. const added for good measure to ensure variables are not mutated
+  return (a > b) ? a : b;
+}
+```
+* a compiler will become confused if you overload a function to have a version involving accepting arguments by value and another version involving accepting arguments by reference
+```c++
+// this confuses the compiler since it does not know when you invoke a function whether you want to pass by value or lvalue reference
+template <typename T> T maximum(T a, T b){ return (a > b) ? a : b; }
+template <typename T> const &T maximum(const &T a,const &T b){ return (a > b) ? a : b; }
+```
+
+## Template Specialization
+
+__Template Specialization__: allows a programmer to define certain templates very specifically (for instance maybe the function needs to work differently with a particular variable type)
+```c++
+// function template
+template <typename T> T maximum(T a, T b){ return (a > b) ? a : b; }
+
+// function template specialization
+template <> const char* maximum<const char*> (const char* a, const char* b){ 
+  return (std::strcmp(a,b) > 0) ? a : b;
+}
+
+// when the function template is invoked with a const char*, the specialized method
+// will be used instead of the default function template
+
+// if calling with int, double, etc... it will use the regular function template
+// but if we pass a const *char into the maximum function, the function will compare pointers 
+// and not give us the behavior we want (it won't compare the length of the strings)
+// so we want to define a specialized function implementation for const char*
+```
+
+## `concepts` (standard)
+
+__concepts__: mechanism to place constraints on template type parameters
+* e.g. only call this function with an int parameter
+* only available in c++20
+```c++
+#include <concepts>
+
+template <typename T>
+void printNumber(T n){
+  static_assert(std::isIntegral<T>::value, "must pass in an integral argument");
+  std::cout << n << std::endl;
+}
+```
+
+two kinds of concepts
+* __standard built-in concepts__: come with the c++ language
+* __custom concepts__: can build your own concepts
+
+__built-in concepts__
+* `same_as`: specifies a type is the same as another type
+* `dervied_from`: specifies that a type is derived from another type
+* `convertible_to`: specifies that a type is implicitly convertible to another type
+* `common_reference_with`: specifies that two types share a common reference type
+* `common_with`: specifies that two types share a common type
+* `integral`: specifies that a type is an integral type
+* `signed_integral`: specifies that a type is an integral type that is signed
+* `unsigned_integral`: specifies that at ype is an integral type that is unsigned
+* `floating_point`: specifies that a type is a floating-point type
+
+### syntax1: (`requires std::integral<T>`)
+
+__`requires`__ keyword is one way to specify a concept constraint on a template
+* specify the (1) template declaration `template <typename T>`
+* then specify the (2) the requires clause
+```c++
+template <typename T>
+requires std::integral<T> // creates compiler error if the generated function template instance uses a type violating this constraint
+T add (T a, T b){
+  return a + b;
+}
+// e.g. works with char and int but does not work with double
+```
+
+using __type traits__
+* you can also specify the requires statement with a statement that results in a boolean (and can be evaluated at compile-time)
+```c++
+template <typename T>
+requires std::is_integral_v<T> // concept succeeds if statement returns true at compile-time
+T add (T a, T b){
+  return a + b;
+}
+```
+
+### syntax2: template declaration with concept (`template <std::integral T>`)
+
+when writing the template declaration, add the concept to the type parameter declaration
+```c++
+template <std::integral T>
+T add (T a, T b){
+  return a + b;
+}
+```
+
+### syntax3: concept with auto (`auto add (std::integral auto a, std::integral auto b)`)
+
+there is a syntax that can be used if using the `auto` keyword
+```c++
+auto add (std::integral auto a, std::integral auto b){
+  return a + b;
+}
+```
+
+### syntax4: add `requires` statement after parameter list
+```c++
+template <std::integral T>
+T add (T a, T b) requires std::integral<T>{
+  return a + b;
+}
+```
+
+## `concepts` (custom)
+
+define your own concepts
+```c++
+template <typename T>
+concept MyIntegral = std::is_integral_v<T> // using a type trait
+
+template <typename T>
+concept Multipliable = requires (T a, T b){
+  a * b; // just makes sure the syntax is valid
+}
+
+template <typename T>
+concept Incrementable = requires (T a){
+  a+=1;
+  ++a;
+  a++;
+}
+```
+
+using custom concepts
+```c++
+// syntax 1
+template <typename T>
+requires MyIntegral<T>
+T add1(T a, T b){
+  return a + b;
+}
+
+// syntax 2
+template <MyIntegral T>
+T add2(T a, T b){
+  return a + b;
+}
+
+// with auto syntax
+auto add3(MyIntegral auto a, MyIntegral auto b){
+  return a + b;
+}
+```
+
+## `requires` (detailed)
+
+four kinds of requirements
+* __simple requirements__
+* __nested requirements__
+* __compound requirements__
+* __type requirements__
+
+### simple requirement
+
+This requires that a particular syntax involving type `T` is legal
+```c++
+template <typename T>
+concept TinyType = requires (T t){
+  sizeof(T) <=4; // simple requirement: only checks syntax. does not enforce that the expression evaluates to true
+};
+```
+
+### nested requirement
+
+To make additional confirmations about a type, you need a nested requirement
+```c++
+template <typename T>
+concept TinyType = requires (T t){
+  sizeof(T) <=4; // simple requirement: only checks syntax is legal
+  requires sizeof(T) <= 4; // nested requirement: checks the expression is true
+};
+```
+
+### compound requirement
+
+```c++
+template <typename T>
+concept Addable = requires (T a, T b){
+  // (noexcept is optional)
+  {a + b} noexcept -> std::convertible_to<int> // compound requirement
+  // checks that
+  // (1) a + b is valid syntax,
+  // (2) the operation doesn't throw exceptions (optional),
+  // (3) the result is convertible to int (optional)
+};
+
+Addable auto add( Addable auto a, Addable auto b){
+  return a + b;
+}
+```
+
+## logical combinations of concepts
+
+concepts can be combined with the logical operators __`&&`__ and __`||`__
+* e.g. `T func(T t) requires std::integral<T> || std::floating_point<T>`
+* e.g. `T func(T t) requires std::integral<T> && TinyType<T>`
+```c++
+template <typename T>
+T func(T t) requires std::integral<T> && TinyType<T> {
+  std::cout << "val: " << t << std::endl;
+  return (2*t);
+}
+```
+
+## `concepts` with `auto`
+
+in prior section, we saw basic use of concepts and auto
+```c++
+std::integral auto add(std::integral auto a, std::integral auto b){
+  return a + b;
+}
+```
+
+you can declare a constraint for a variable to ensure certain properties
+```c++
+std::integral auto x = add(10,20);
+std::floating_point auto x = add(10,20); // compiler error
+std::floating_point auto y = 7.7; // can work with literal...may not be super helpful
+```
+* this might come in handy if you define a concept that requires a type to have certain member functions. it is kind of like specifying an interface without creating an abstract class
+
+# Classes
+
+## basics (`public`, `private`)
+
+c++ comes with certain basic built-in types, but sometimes we will want to create larger, more complex types
+* `int`, `float`, `double`, `char`, `std::string`
+
+__classes__: a mechanism in c++ to build our own types
+* a class is a blueprint for a class type, which we can use to build objects in our program
+* classes have __member variables__ and __member functions__
+* the `public`, `private` keywords determine whether the member variable / function is publically accessible or hidden from outside the class scope
+* by default, member variables and member functions are `private`
+
+```c++
+// class declaration and definition
+class Cylinder {
+  public:
+    double baseRadius{1.0}; // declares member variable and provides default initialization
+    double height{1.0}; // declares member variable and provides default initialization
+  
+    double volume(){ // public member function
+      return PI * baseRadius * baseRadius * height;
+    }
+};
+
+int main(){
+  Cylinder cylinder1; // creates a Cylinder instance
+  cylinder1.baseRadius = 3.0;
+  cylinder1.height = 2;
+  return 0;
+}
+```
+* class member variables can either be raw stack variables or pointers
+  * members can't be references; this is because references can never be left uninitialized, and in classes when we declare member variables the ability to leave them uninitialized, and we can't really do that with references
+* classes have functions (methods) that let them do things
+* class methods have access to member variables, regardless of whether they are `public` or `private`
+* private members of classes (variables and functions) aren't accessible from outside the class definition
+
+## Class Constructors
+
+__Constructor__: special kind of method that is called when an instance of a class is created
+* no return type
+* they have the same name as the class
+* can have parameters. can also have an empter parameter list
+* usually used to initialize member variables of a class 
+
+```c++
+class Cylinder {
+  private:
+    double baseRadius{1.0};
+    double height{1.0};
+  
+  public: 
+    Cylinder() {
+      baseRadius = 2.0;
+      height = 2.0;
+    };
+
+    Cylinder(double radiusParam, double heightParam){
+      baseRadius = radiusParam;
+      height = heightParam;
+    }
+
+    double volume(){
+      return PI * baseRadius * baseRadius * height;
+    }
+};
+
+int main(){
+  Cylinder cylinder1; // creates a Cylinder instance
+  cylinder1.baseRadius = 3.0;
+  cylinder1.height = 2;
+  return 0;
+}
+```
+
+### Default Constructor (`default`)
+
+normally, the compiler will generate a default constructor if you do not specify one
+* but if you want to define a new constructor and still get the original default constructor that would be generated by the compiler, use `default` 
+```c++
+class Cylinder {
+  private:
+    double baseRadius{1.0};
+    double height{1.0};
+  public:
+    // constructors
+    Cylinder() = default;
+    Cylinder(double radiusParam, double heightParam){
+      baseRadius = radiusParam;
+      height = heightParam;
+    }
+    double volume(){
+      return PI * baseRadius * baseRadius * height;
+    }
+    // ...
+};
+```
+
+### getters, setters
+
+good practice is to use getter and setter methods to access attributes indirectly, rather than allowing client code to access and modify attributes directly.
+* define the class's data as `private`, but define a publid `getter` and `setter` method that allows access and modification to that variable
+* this allows the programmer to control how the attribute should be presented to the outside world (i.e. in the getter method) or changed internally (i.e. in the setter method), without the client code needing to know.
+
+### split a class across multiple files
+
+it is good practice to move implementation details into other cpp files, and then define header files that client code can import to use features in their program (and without needing to know the implementation details)
+* typically code is split into a header and cpp file. it is up to you to decide how much implementation you want written in the header file
+```c++
+constants.h // contains PI
+cylinder.h // contains class declaration
+cylinder.cpp // contains class implementation details
+
+// main.cpp
+#include "constants"
+#include "cylinder"
+...
+```
+
+constants.h
+```c++
+// add a guard to prevent this file from being included more than once
+#ifndef CONSTANTS_H // do something or only include this code if CONSTANTS_H is not defined yet by the pre-processor
+#define CONSTANTS_H
+const double PI {3.14159};
+#endif
+```
+
+cylinder.h
+```c++
+#ifndef CYLINDER_H
+#define CYLINDER_H
+#include "constants"
+
+class Cylinder {
+  private:
+    double baseRadius{1.0};
+    double height{1.0};
+  public:
+    // constructors
+    Cylinder() = default;
+    Cylinder(double radiusParam, double heightParam); // just a declaration
+    double volume();
+    // ...
+};
+#endif
+```
+
+cylinder.cpp
+```c++
+#include "cylinder.h"
+
+
+// :: is a scope resolution operator. it's saying the scope where the RHS thing should live in
+Cylinder::Cylinder(double radiusParam, double heightParam){ // compiler knows this is an implementation of a function declared in the header file
+  baseRadius = radiusParam;
+  height = heightParam;
+}
+
+double Cylinder::volume(){
+  return PI * baseRadius * baseRadius * height;
+}
+```
+
+main.cpp
+```c++
+#include "constants"
+#include "cylinder"
+// ...
+```
+
+## managing class objects through pointers
+
+If using classes through dynamic memory allocation, you may need to use objects with pointers
+* objects are created on the heap when they need to outlive the function they are created in
+```c++
+int main() {
+  // stack object
+  Cylinder c1(10,2);
+  c1.volume();
+
+  // heap object
+  Cylinder* c2 = new Cylinder(11,20);
+  (*c2).volume();
+  c2->volume();
+
+  // remember to delete heap object when done (release the memory from the heap)
+  delete c2;
+
+  return 0;
+}
+```
+
+## Destructors
+
+__Destructor__: special methods that are called when an object dies
+* needed when object needs to release _dynamically allocated memory_, or for some other kind of clean up
+* because if heap memory is allocated in the constructor, the default destructor won't release that memory, so we need to define the destructor method and release that memory
+* declare destructor with `~Classname()`
+
+```c++
+class Dog {
+  public:
+    Dog(){//...
+    };
+    Dog(std::string nameP, std::string breedP, int ageP){
+      name = nameP;
+      breed = breedP;
+      age = new int; // memory allocated on heap...need to release from heap when this object destroyed!
+      *age = age;
+    };
+    ~Dog() { // declare and define destructor; needed to release dynamic memory allocated when class was constructed
+      delete age;
+    }; 
+  private:
+    std::string name;
+    std::string breed;
+    int* age;
+}
+```
+
+destructors are called when
+1. an object is passed by value to a function
+  * passing an argument by value creates a local stack variable within the function scope; that local variable gets deleted when the scope closes 
+2. when a local object is returned from a function (for some compilers)
+  * sometimes a copy of the return value will be made and returned, which means the local return value gets killed when the function scope closes; however, this doesn't always happen because a compiler may optimize your code to return an object by reference, which results in the original object not becoming destroyed
+3. when a local stack object goes out of scope (dies)
+4. when a heap object is released with the `delete` keyword
+
+## Constructor, Destructor ordering
+
+* the order in which destructors are called will be the inverse order in which the constructors were be called
+
+## the `this` pointer
+
+__`this`__: each class member function contains a hidden pointer called `this`. That pointer contains the address of the current object for which the method is being executed. This also applies to constructors and destructors
+```c++
+// example
+Dog::Dog(){
+  name = "none";
+  breed = "none";
+  age = new int;
+  *age = 0;
+  std::cout << this << std::endl; // prints memory address of this class instance
+}
+```
+
+sometimes the `this` must be used to resolve name conflicts (for example, when a method parameter has the same name as a class member variable)
+```c++
+// method parameter 'name' is the same name as the class member variable 'name'
+void setName(const std::string& name){
+  // name = name; ??? Error. ambiguous
+  this->name = name; // no ambiguity
+}
+```
+
+If we have the class member functions return a pointer, we can create chained calls using pointers
+```c++
+class Dog{
+  //...
+  Dog* setName(const std::string& name){
+    this->name = name;
+    return this;
+  }
+  // ...
+}
+
+
+// in main
+Dog* dogPtr = new Dog("milo","shepherd",3);
+dogPtr->printInfo();
+
+// pointer version
+dogPtr->setName("mario")->setBreed("terrier")->setAge(4); // the setters return a pointer to the current object
+dogPtr->printInfo();
+delete dogPtr;
+```
+
+If we have teh class member functions return a reference, we can chain method calls using references too
+```c++
+class Dog{
+  //...
+  Dog& setName(const std::string& name){
+    this->name = name;
+    return *this;
+  }
+  // ...
+}
+
+// in main...
+dogPtr->setName("mario").setBreed("terrier").setAge(4); // the setters return a reference to the current object
+```
+
+## `struct`
+
+`struct`: an alternative way to making class (a blueprint for creating instances of more complex objects)
+* its only difference from classes is that by default all members (variables and functions) are `public`
+* `struct` is convenient for data objects; i.e., convenient when we just want to package data and don't care about encapsulation. We just want a mechanism to transport data
+
+## size of class objects
+
+__Boundary Alignment__: something compilers do when they have member variables of different types for a class
+* memory variables that have the size of 4 bytes in memory are going to be stored at memory locations that are multiples of 4
+* so, we might have gaps in memory if we have variables that have size of say 2 bytes and 4 bytes in memory. So the amount of memory taken up might be more than what we would suspect from adding up the memory of all the members of the class
+* adding member functions to a class does not change how much memory it takes up
+* note, c++ stores strings as `const char*`, so size of a string does not effect how much memory the class uses
+
+Intuitive example
+```c++
+// whole class ends up being 8 bytes!
+class Dog{
+  public:
+    Dog() = default;
+
+  private:
+    size_t legCount; // 8 bytes
+}
+
+int main(){
+  Dog dog1;
+  sizeof(size_t); // 8 bytes
+  sizeof(dog1); // 8 bytes!
+  return 0;
+}
+```
+
+peculiar example
+```c++
+// whole class ends up being 8 bytes!
+class Dog{
+  public:
+    Dog() = default;
+
+  private:
+    size_t legCount; // 8 bytes
+    int* ptr // 8 bytes
+    std::string myStr // 8 bytes...const char* under the hood
+}
+
+int main(){
+  Dog dog1;
+  sizeof(size_t); // 8 bytes
+  sizeof(int*); // 8 bytes
+  sizeof("hello"); // 8 bytes
+  sizeof("hello woooooooooooooorld..."); // 8 bytes
+  sizeof(dog1); // 8 bytes!
+  return 0;
+}
+```
+
+# Inheritance
+
+## basics (`friend`,public inheritance)
+
+__inheritance__: 
+* defining feature of object oriented programming in c++
+* involves building types on top of other types
+* inheritance hierarchies can be set up to suit your needs
+* code reuse is improved
+
+to implement inheritance, use a __`:`__ in a class header of the subclass
+* we use __public inheritance__ with the `public` keyword
+```c++
+#include "person.h" // contains 'class Person'
+
+// syntax to derive from another class. Person information now embedded inside Player.
+// but you can also override methods in Person
+class Player : public Person {  // use ':' to derive from a base class
+  friend std::ostream& operator<<(std::ostream& out, const Player& player);
+
+  public:
+    Player()=default;
+    Player(std::string gameP);
+    ~Player();
+
+  private:
+    std::string mGame{"none"};
+    // all other information is baked into the Player object
+}
+```
+* __public inheritance__: derived classes can access and use public members of the base class, but the derived class can't directly access private members
+* __`friend`__: has access to private members of the derived class but don't have access to the private members of a base class
+* you can still access private members of the base class by using public member functions from the base class (e.g. `getName()`, `setName()`). These will be available in public inheritance because these member functions are `public`
+
+## `protected`
+
+__`protected`__ access specifier for members in a base class that allows derived classes to access the members (variables or functions) but does not allow the members to be accessed from the outside
+* this is a convenient way to allow a derived class to access members from the base class without also exposing the base class members to the outside world
+
+```c++
+
+class Person {
+  public:
+    Person()=default;
+    Person(std::string firstName, std::string lastName);
+    ~Person();
+
+  protected:
+    std::string firstName;
+    std::string lastName;
+}
+
+class Player : public Person {
+  friend std::ostream& operator<<(std::ostream& out, const Player& player);
+
+  public:
+    Player()=default;
+    Player(std::string gameP);
+    ~Player();
+
+  private:
+    std::string mGame{"none"};
+    // all other information is baked into the Player object
+}
+
+Player::Player(std::string gameP) : mGame(gameP) {
+  firstName = "John"; // can access protected members from base class
+  lastName = "Snow"; // can access protected members from base class
+}
+```
+
+## base class access specifiers
+
+__base access specifier__: defines how accessible base class members will be in a derived class
+* `public` (public inheritance): anything `public`, `protected`, or `private` in the base class stays that way in the derived class
+* `protected` (protected inheritance): everything `public` and `protected` in the base class becomes `protected` in the derived class; `private` members in the base class are `private` to the derived class; this only makes the members less accessible to the public
+* `private` (private inheritance): everything `public`, `protected`, or `private` in the base class becomes `private` in the derived class; the derived class basically can't use any of the members it inherits, therefore.
+
+The base class access specifier controls how relaxed or constrained the access of the base class members are from the derived class
+* regardless of the access specifier, private members of the base class are never accessible from derived classes.
+
+## resurrecting access to members with `using`
+
+can resurrect access to members with the `using` keyword to get private inheritance while also raising the access to certain variables (i.e. not everything from the base class becomes private access in the derived class)
+* don't do this though. it makes the code confusing to read
+```c++
+class Person; 
+class Engineer : private Person {
+  friend std::ostream& operator<<(std::ostream& out, const Engineer& operand);
+
+  public:
+    Engineer()=default;
+    ~Engineer();
+
+  protected: // resurrect members to a more relaxed access level: protected access
+    using Person::getFullName();
+    using Person::getAge();
+    using Person::getAddress();
+
+  public: // resurrect members to a more relaxed access level: public access
+    using Person::mFullName;
+    using Person::mAddress; // compiler error. CANT RESURRECT SOMETHING PRIVATE TO A MORE PUBLIC ACCESS
+    using Person::addNumbers;
+
+  protected:
+    int contractCount{0};
+}
+```
+
+## Default arg constructors with inheritance
+
+say `CivilEngineer` inherits from `Engineer`, which inherits from `Person`
+* creating a CivilEngineer will call the constructors for `Person`, then `Engineer`, then `CivilEngineer`
+* It is good practice to always provide a default constructor for your classes, especially if they will be part of an inheritance hierarchy
+
+## Custom Constructors for inheritance hierarchies
+
+say `CivilEngineer` inherits from `Engineer`, which inherits from `Person`
+* what if we want to build the underlying objects using other constructors (not the default constructors)?
+
+__initializer lists__: allows us to pass arguments to call base class constructors
+* can call the base class constructor after the constructor header (after the colon, before the initializer list) to forward information
+* the initializer list only has business initializing member variables for the class to which it belongs (can't initialize base class member variables)
+```c++
+Engineer::Engineer(const std::string& fullName, int age, const std::string address, int contractCount)
+  : // start of initializer list
+  Person(fullName,age,address), // calls the person constructor in the intializer list
+  contractCount(contractCount) // initializes a member variable of the Engineer class
+  {
+
+  };
+
+CivilEngineer::CivilEngineer(const std::string& fullName, int age, const std::string address, int contractCount, std::string speciality)
+  : // start of initializer list
+  Engineer(fullName,age,address,contractCount), // calls the Engineer constructor in the intializer list
+  mSpeciality(speciality) // initializes a member variable of the CivilEngineer class
+  {
+
+  };
+```
+
+## copy constructor with inheritance
+
+a copy constructor is created by default
+* because we should be able to make calls like: `Dog dogDup = dogOriginal` (which makes a copy of `dogOriginal`)
+* if the object happens to use dynamically allocated memory (i.e. creates an object on the heap when created), then you will likely need to write a custom copy constructor to prevent weird behavior when copying a class instance
+
+```c++
+// copy constructor MUST receive argument by reference--because
+// passing by value would invoke the copy constructor, whic
+Person::Person(const Person& source)
+  : fullName{source.FullName}, age{source.age}, address{source.address}
+  {
+    std::cout << "Person copy constructor called" << std::endl;
+  };
+
+// for the copy constructor of a derived class you may need to recreate the base class:
+Engineer::Engineer(const Engineer& source)
+  : Person(source.FullName,source.age,source.address),
+  contractCount{source.contractCount}
+  {
+    std::cout << "Engineer copy constructor called" << std::endl;
+  };
+```
+
+NOTE: the `Engineer` copy constructor has issues
+* not reusing the copy constructor we have in `Person`
+* `address` is private to Person, so it can't be directly accessed from `Engineer` object
+* we could set up a public method to return the address that could go against your design guidelines
+
+__Proper copy constructor for a derived class__
+```c++
+// a proper copy-constructor implementation
+Engineer::Engineer(const Engineer& source)
+  : Person(source), // compiler is smart enough to "strip away" the Engineer object into a Person object, which it can use to build a new Person
+  contractCount{source.contractCount}
+  {
+    std::cout << "Engineer copy constructor called" << std::endl;
+  };
+```
+
+## Inheriting a Base Constructors ("`using Person::Person;`")
+
+you can inherit and use a constructor from a base class in a derived class
+
+base constructors are not inherited by default
+* i.e. by default it is not possible for derived classes to inherit base constructors to setup things
+* but it is possible to use base constructor to setup our own objects
+* when a base class constructor is inherited, it is with the same exact access specifier it had in the base class
+```c++
+class Person {
+
+  friend std::ostream& operator<<(std::ostream&, const Person& person);
+
+  public:
+    Person()=default;
+    Person(std::string fullName, int age, const std::string address);
+    Person(const Person& source); // copy constructor
+    ~Person();
+
+  // members
+  public:
+    std::string fullName{"none"};
+  protected:
+    int age{0};
+  private:
+    std::string address{"none"}
+}
+
+// Inherit Person constructor
+class Engineer : public Person {
+  using Person::Person; // inheriting constructor: WHEN BUILDING ENGINEER OBJECTS SETUP A BASE-LIKE CONSTRUCTOR THAT'LL ONLY INITIALIZE THE BASE MEMBER VARIABLES
+  friend std::ostream& operator<<(std::ostream&, const Engineer& person);
+  public:
+    Engineer(const Engineer& source);
+    ~Engineer();
+  protected: 
+    int contractCount{999}; // default value
+}
+
+// the generated constructor will look something like
+Engineer::Engineer(const std::string& fullName, int age, const std::string& address)
+  : Person(fullName,age,address)
+  {
+
+  }
+```
+
+* copy constructors are not inherited, but you won't usually notice this as the compiler will insert an automatic copy constructor
+* inherited constructors are base constructors. They have no knowledge of the derived class. Any member from the derived class will just contain junk or whatever default value it is initialized with.
+* constructors are inherited with whatever access specifier they had in base class
+* on top of derived constructors, you can add your own that possibly properly initialize derived membeer variables
+* inheriting constructors adds a level of confusion to your code. It's not clear which constructor is building your object. It is recommended to avoid them and only use this feature if no other option is available.
+
+## Destructors with inheritance
+
+destructors for an inheritance hierarchy are called in the reverse order that the constructors were called
+* derived classes are destructed first; then base classes
+* if you resuse a member name in a derived class (and the member is still accessible in the derived class), c++ will "hide" the parent class member and guess that you want to refer to the derived class member
+* e.g. calling a method on in the parent class will call the parent method; calling a method on a child class will call the child method
+```c++
+int main(){
+  Child child(33);
+  child.printVar();
+  child.Parent::printVar(); // calls the method in Parent, value in parent just contains junk or whatever the value at initialization was
+  // objectname.ParentClassName::ParentClassFunction
+  return 0;
+}
+```
+
+## Reused Symbols in Inheritance
+
+member variables, member functions, and even exactly the same method signatures can be reused in derived classes
+* e.g. `ParentClass` may have members `void printVar()`, `int mVar`; `ChildClass` may as well
+
+
+# Polymorphism
+
+__polymorphism__: a concept that allows use to a use a pointer to a base class or a base class reference to interact with objects that may be of various subtypes (derived classes)
+* example: `Shape`<-`Oval`<-`Circle` class hierarchy
+```c++
+// base pointers managing derived objects
+Shape* shape1 = new Circle; // shape pointer managing a circle; we are 'viewing' the Circle through the lense of it being a Shape
+Shape* shape2 = new Rectangle;
+Shape* shape3 = new Oval;
+
+// base references managing derived objects
+Shape& shape1ref = *shape1; // shape reference managing an existing circle object
+Shape& shape2ref = *shape2;
+Shape& shape3ref = *shape3;
+
+// ... delete object
+```
+
+can define functions to take objects by pointer or reference to some type, which makes the function flexible
+```c++
+void drawShape(Shape* shapePtr){
+  shapePtr->draw(); // calls the method for the kind of object passed in
+}
+
+void drawShape(const Shape& shape){
+  shapePtr.draw(); // calls the method for the kind of object passed in
+}
+```
+
+This also allows us to store many objects of different subtypes (but all the same base type) to be held in a collection holding base type objects:
+```c++
+Circle c1(7,"circle1");
+Circle c2(3.2,"circle2");
+Circle c3(12,"circle3");
+Oval o1(7,"oval1");
+Oval o2(2,"oval2");
+Shape* shapes[] {&c1,&c2,&c3,&o1,&o2};
+// can iterate
+for (Shape* shapePtr : shapes){
+  shapePtr->draw();
+}
+```
+
+## we don't get polymorphism by default (static binding)
+
+normally, the compiler looks at the type of the pointer or reference to decide which method to call
+* if derived classes are referenced statically by a base class, the compiler will think the base class method should be invoked
+* _"I have an object of static type `BaseClass`, so I will call `BaseClass::method()`"_
+```c++
+Shape s1("shape1");
+Circle c1(7,"circle1");
+Oval o1(7,"oval1");
+
+// now, when we have each shape execute draw(), we want the derived method to be called
+// (the overloaded method in the derived class--not the method of the base class, Shape)
+// however, by default, the Shape.draw() method will be called for all objects.
+Shape* shapePtr = &shape1;
+shapePtr->draw(); // want Shape::draw() called
+shapePtr = &c1;
+shapePtr->draw(); // want Circle::draw() called, but Shape::draw() called instead
+shapePtr = &o1;
+shapePtr->draw(); // want Oval::draw() called, but Shape::draw() called instead
+
+// also applies to references
+Shape& shapeRef = shape1;
+shapeRef.draw(); // want Shape::draw() called
+shapeRef = c1;
+shapeRef.draw(); // want Circle::draw() called, but Shape::draw() called instead
+shapeRef = o1;
+shapeRef.draw(); // want Oval::draw() called, but Shape::draw() called instead
+```
+
+## achieving polymorphism with `virtual` functions (dynamic binding)
+
+declare a member function as `virtual` to allow for derived class member functions to be invoked when there is a static type variable like a base class pointer or base class reference handling a derived class object instance
+```c++
+class Shape{
+  public:
+    Shape()=default;
+    Shape(const std::string& description)
+    ~Shape();
+
+    virtual void draw() const{ // VIRTUAL allows derived class methods to be invoked instead
+      std::cout << "Shape::draw() called..." << std::endl;
+    }
+
+  protected:
+    std::string description{""};
+}
+```
+
+## Size of polymorphic objects and slicing
+
+* You can achieve static binding through regular inheritance. The compiler using the static type to determine which method to invoke
+* You can achieve dynamic binding through inheritance with `virtual` keywords (gives polymorphism). but this comes at a cost of memory
+```c++
+Shape  s1("shape1");     // 40 bytes; with dynamic binding (virtual)
+Circle c1(7,"circle1");  // 56 bytes; with dynamic binding (virtual)
+Oval   o1(7,"oval1");    // 56 bytes; with dynamic binding (virtual)
+
+// removing the virtual keywords from class definitions
+Shape  s1("shape1");     // 32 bytes; no dynamic binding (no virtual)
+Circle c1(7,"circle1");  // 48 bytes; no dynamic binding (no virtual)
+Oval   o1(7,"oval1");    // 48 bytes; no dynamic binding (no virtual)
+```
+__slicing__: occurs when we take a derived class object and hold it in a base class reference or base class pointer; the compiler will be smart enough to strip the unecessary data from the derived class object. Occurs if the data in the class is very clearly row based data.
+```c++
+Shape shape2 = circle1; // strips data off circle to only grab data needed for Shape
+shape2.draw() // calls Shape::draw(); the information that was unique to Circle derived class is lost
+```
+
+## Polymorphic objects stored in a collection
+
+be careful about storing derived class objects in an array holding base class objects...information will be lost (UNLESS YOU USE POINTERS)
+* as soon as the data has been sliced off, the information is lost
+* to prevent losing the data of the derived classes, you need to manage the objects with pointers (you can't use references!)
+```c++
+Circle c1(7,"circle1");
+Circle c2(3.2,"circle2");
+Circle c3(12,"circle3");
+Oval o1(7,"oval1");
+Oval o2(2,"oval2");
+Shape shapes[] {c1,c2,c3,o1,o2}; // now, we only have Shape objects; data was sliced off
+```
+* unfortunately, you cannot store an array of references to manage a collection of derived classes:
+```c++
+Circle c1(7,"circle1");
+Circle c2(3.2,"circle2");
+Circle c3(12,"circle3");
+Oval o1(7,"oval1");
+Oval o2(2,"oval2");
+Shape& shapes[] {c1,c2,c3,o1,o2}; // WON'T COMPILE
+```
+* you can't do this because of the __left assignability rule__. references are not left-assignable
+  * an array is designed to modify the data of what is stored inside, so if you setup an array like `Shape& shapes[] {c1,c2,c3,o1,o2}`, the compiler thinks that at some later point you will want to assign other data to what is already stored in the array, but a requirement of collections is that they are left assignable, so we can't use references
+```c++
+int a = 56; // create stack var
+int& b = a; // create a reference variable to the object
+b = 60; // this will actually change the underlying data, it won't create a new object
+// so, references are not left assignable
+```
+* you can store the derived class objects in an array with smart pointers:
+```c++
+std::shared_ptr<Shape> shapes[] {
+  std::make_shared<Circle>(12.2,"circle4")
+  //...
+};
+```
+
+## `override`
+
+__Override__: specification that you can use to avoid errors in your inheritance hierarchies if using `virtual` functions to setup polymorphic behavior
+* add the `override` keyword to a function to specify explicitly that it is meant to be overriding a base class method; it throws an error if the same method signature does not exist in the base class
+* beaware: as soon as `override` is used in a derived class for a method signature overload, all other method overloads in the base class get hidden from the derived class
+* so, once you override a single overload from a base class, all other overloads from the base class become hidden to the derived class
+* so, if you want all the overloaded methods in the parent class, you need to explicitly write `override` methods for each of them
+
+```c++
+class Oval : public Shape {
+  public:
+    Oval()=default;
+    Oval(double xRad, double yRad, const std::string& description);
+    ~Oval();
+
+    virtual void draw() const override { // OVERRIDE
+      std::cout << "Oval::draw() was called" << std::endl;
+    }
+
+  private: 
+    double xRad{0.0};
+    double yRad{0.0};
+}
+```
+
+## Inheritance and Polymorphism at different levels
+
+Reminder: if using `virtual` for a member function, you will likely want to make the destructor `virtual` too. It is good practice to have base classes with `virtual` destructors
+
+## Inheritance and Polymorphism with `static` members
+
+```c++
+// base class with a static variable
+class Shape {
+  public:
+    Shape(); // constructor will increment mCount
+    Shape(const std::string& description); // constructor will increment mCount
+    ~Shape();
+
+    void draw() const {
+      std::cout << "Shape::draw() called" << std::endl;
+    }
+
+    virtual int getCount() const{
+      return mCount;
+    }
+
+    static int mCount;
+
+  protected:
+    std::string description;
+}
+
+// derived class. static variable is inherited
+class Ellipse : public Shape {
+  public:
+    Ellipse(); // static variable in parent class will also be incremented
+    Ellipse(double xRad, double xRad, const std::string& description); // static variable in parent class will also be incremented
+    ~Ellipse();
+
+  virtual int getcount() const override{
+    return mCount;
+  }
+
+  static int mCount;
+
+  private:
+    double xRad;
+    double yRad;
+}
+```
+
+## `final`
+
+can use `final` specifier to
+* restrict how you override method in derived classes
+  * e.g. `void run() const override final` prevents others from overriding the `run` method in downstream classes
+  * `virtual` keyword makes no sense when the method is final; still legal
+* restrict how you can derive from a base classes (can restrict inheritance of a class)
+  * e.g. `class Cat final : public Feline` will cause a compiler error if anyone inherits from `Cat`
+  * `virtual` methods make no sense when the class is `final`; still legal though
+  * `override` still makes sense if a class if `final`
+
+restrict methods from being overrided in downstream classes
+```c++
+class Dog : public Feline {
+  public:
+    Dog() = default;
+    Dog(const std::string& furStyle, const std::string& description);
+    ~Dog();
+
+    virtual void bark() const {
+      std::cout << "Dog::bark called" << std::endl;
+    }
+
+    void run() const override final { // no downstream class will be able to override run() method (not going to be final)
+      std::cout << "Dog::run called" << std::endl;
+    }
+}
+```
+
+restrict class from being inherited
+```c++
+class Cat final : public Feline {
+  //...
+}
+```
+
+## `virtual` functions with default arguments
+
+`virtual` functions can include default arguments
+* it is important to realize that the compiler uses _static binding_ to determine the default arguments for a function call
+* in other words, if the `Base` class has a virtual method with default parameters, those default parameters will be used in the call to the derived class's method--it won't use the default parameters defined in the `Derived` class's method signature
+
+in summary
+* default arguments are handled at compile time
+* virtual functions are called at run time with polymorphism
+* if you use default arguments with `virtual` functions, you might get weird (erroneous) results with polymorphism
+* __a good guideline might be to NOT use default arguments with a virtual function__
+```c++
+class Base {
+  public:
+    Base();
+    ~Base();
+
+    virtual double add(double a = 5, double b = 5) const{
+      std::cout < "Base::add() called" << std::endl;
+      return (a + b + 1);
+    }
+}
+
+class Derived : public Base {
+  public:
+    Derived();
+    ~Derived();
+
+    virtual double add(double a = 5, double b = 5) const override{ // NOTE! 
+      std::cout < "Derived::add() called" << std::endl;
+      return (a + b + 1);
+    }
+}
+```
+
+## `virtual` destructors
+
+it is VERY important that destructors of base classes (i.e. classes that will be derived) be virtual
+* this is because it will likely be the case that a derived class is being managed by a reference or pointer to the base class
+* in this situtation, if the object is created on the heap and then removed, only the base class destructor will be called--and none of the derived classes in the heirarchy will have their destructors called
+```c++
+Animal* animal = new Dog("dark yellow", "dog1");
+delete animal; // If animal's destructor is not virtual, this will be bad! It will only delete the Animal data
+```
+* solution: __mark destructors in base classes `virtual`__
+
+## `Dynamic_cast<>()`
+
+if we have a reference or pointer to a base class that is managing a derived class, we may want to "get back" the derived class object.
+* want to transform from base class pointer or base class reference to a derived class pointer or derived class reference at runtime
+* makes it possible to call non polymorphic methods on derived objects (methods that only the derived object knows)
+
+`Dynamic_cast<>()`: allows us to cast a base class pointer or base class reference to a derived class pointer or derived class reference
+* overusing down casts is a sign of bad design.
+* if you find yourself doing a lot of down casts, perhaps consider making that function polymorphic in the first place
+
+```c++
+// base class pointer
+Animal* animalPtr = new Feline("stripes", "feline1"); // Animal* (stack variable) pointing to object on heap
+
+// base class reference
+Feline feline2("stripes","feline2");
+Animal& animalRef = feline2; // Animal reference (stack variable) pointing to existing stack variable 
+
+// casting pointers
+// if cast succeeds, we get valid pointer to derived class
+// if it fails, we get nullptr. So we can check before calling stuff on returned pointer
+Feline* felinePtr = dynamic_cast<Feline*>(animal1);
+if (felinePtr) {
+  felinePtr->doSomeFelineThing();
+} else {
+  std::cout << "couldn't cast Animal* to Feline*" << std::endl;
+}
+
+// casting references
+Feline& felineRef {dynamic_cast<Feline&>(animalRef)}; // cast the Animal& to a Feline&
+felineRef.doSomeFelineThing(); // not recommended unless you know it will succeed
+
+// don't have nullptr equivalent to references, 
+// so there is no way to directly check the return value like we did with pointers
+// but the reference can be turned into a pointer and then we can do the cast
+Feline* felinePtr2 {dynamic_cast<Feline*>(&animalRef)};
+if (felinePtr2) {
+  felinePtr->doSomeFelineThing();
+} else {
+  std::cout << "couldn't cast Animal& to Feline&" << std::endl;
+}
+```
+
+## Warning: never call `virtual` functions from constructors, destructors!
+
+With a `Base` and `Derived` class, the call order for creation, deletion is:
+1. Base constructor
+2. Derived constructor
+3. use objects
+4. Derived Destructor
+5. Base Destructor
+__Never call virtual functions from constructors or destructors__
+
+if the Base constructor has a virtual function, we will call that virtual function when we hit the base constructor, but by this time the derived object has not been created yet, so if we need to call a polymorphic function that needs to call the derived implementation, that won't be available and so the compiler is going to use the base class version of the method. The same phenomenon is true when destructing objects. When the Base destructor is called, the derived object will no longer exist so instead the Base class destructor will be called. In other words, you won't get the virtual functionality desired in your constructors and destructors
+
+* calling a `virtual` function from a constructor or destructor won't give you polymorphic results
+* the call will never go to a more derived class than the currently executing constructor or destructor
+* in other words you will get static binding results
+
+The next best thing you can do is to call your virtual functions AFTER you've created your derived object
+```c++
+Base* b = new Derived;
+b->setup();
+int n = b->getValue();
+b->cleanUp();
+delete b;
+```
+
+## Pure virtual functions and Abstract classes
+
+* __pure virtual function__: mechanism to indicate the method is meant to be implemented in the base class
+  * define a pure virtual function by assigning using the `virtual` keyword and assigning the function to `0`
+* __Abstract class__: a class with at least one pure virtual function
+  * attempting to construct an Abstract class will throw a compiler error
+
+```c++
+class Shape { // Abstract class. 
+  protected:
+    Shape()=default;
+    Shape(const std::string& description);
+  
+  public:
+    virtual ~Shape()=default;
+
+    virtual double perimeter() const = 0; // PURE VIRTUAL function
+    virtual double surface() const = 0; // PURE VIRTUAL function
+  
+  private:
+    std::string mDescription;
+};
+```
+
+```c++
+Shape* shape = new Shape(); // error. Shape is an abstract class. Can't create objects out of it
+```
+
+in summary
+* if a class has at least one _pure virtual function_, it becomes an _abstract class_
+* you can't create objects of an abstract class. If you do that, you'll get a hard compiler error
+* derived classes from an abstract class must explicitly override all pure virtual functions from the abstract parent class. If they don't, then the derived class also becomes Abstract
+* pure virtual functions don't have an implementation in the abstract class. They are meant to be implemented by deriving classes
+* you can't call the pure virtual functions from the constructor of the abstract class
+* the constructor of the abstract class is used by the deriving class to build up the base part of the object
+
+## Abstract classes as Interfaces
+
+* __Abstract class__: an abstract class with only pure virtual functions and no member variables can be used to model an _interface_
+* __Interface__: specialization of something that will be fully implemented in derived class, but the specification itself resides in the abstract class
+
+an __Interface__ can be created by defining a class with __only__ _pure virtual functions_ and __no__ _member variables_
+example
+```c++
+class StreamInsertable{ // is an interface. no member variables. only pure virtual functions
+  friend std::ostream& operator<<(std::ostream& out, const StreamInsertable& operand) {
+    operand.streamInsert(out);
+    return out;
+  };
+
+  public:
+    virtual void streamInsert(std::ostream& out) const=0;
+}
+
+class Point : public StreamInsertable{
+  public:
+    Point()=default;
+    Point(double x, double y): mX(x), mY(y) {}
+
+    virtual void streamInsert(std::ostream& out)const override{
+      out << "Point [x: " << mX << ",y: " << mY << "]";
+    }
+
+  private:
+    double mX;
+    double mY;
+}
+```
 
 # SHORT GUIDE BELOW:
 
@@ -3117,3 +4970,1451 @@ __IMPORTANT__: a very common way programmers create garbage that should be avoid
 * __garbage__: created when we can no longer access previously allocated memory on the heap
 * __dangling pointer__: pointer that no longer points to something valid on the heap. Not necessarily a bad thing. always happens whenever we delete something on the heap with the `delete` keyword. At that point, it should be re-assigned to another location (or to be assigned to `NULL`)
 
+
+
+# Lec 3
+
+## Passing Arguments to functions and methods
+
+### Storage and Variables
+
+If an expression or variable has a __value type__ (i.e., not a _reference type_), it gets its own storage
+* Memory is allocated and a constructor is run
+* When the variable or expression leaves scope, its destructor is run and the memory for the object is released
+
+If the expression is a (lvalue) __reference type__, its storage needs to be supplied as part of initialization
+* No memory management, construction, or destruction occurs either during initialization or upon leaving scope
+
+```c++
+#include<iostream>
+using namespace std;
+struct A {
+    A() { cout << "Creating an A\n"; }
+    ~A() { cout << "Destroying an A\n"; }
+};
+
+int main()
+{
+    A a;
+    {
+      A &a2 = a;
+    }
+    cout << "out of inner scope\n";
+    return 0;
+}
+
+// Creating an A
+// out of inner scope
+// Destroying an A
+```
+
+![alt text](pics/p5.JPG "Title")
+
+### Passing Arguments
+
+3 ways to pass arguments to a function in C++
+* __By value__
+  - `void f(X x);`
+  - `x` is a copy of the caller’s object
+  - Any changes `f` makes to `x` are not seen by the caller
+* __By reference__
+  - `void g(X &x);`
+  - `x` refers to the caller’s existing object without creating a new copy
+  - Any changes `g` makes to `x` also change what the caller sees
+* __By move__ (later)
+  - `void h(X &&x);`
+
+```c++
+void f(int x)
+{ x = 3; cout << "f’s x is " << x << endl; }
+void g(int &x)
+{ x = 4; cout << "g’s x is " << x << endl; }
+
+int main() {
+  int x = 2;
+  cout << x << endl; // prints 2
+  f(x); // print’s f’s x is 3
+  cout << x << endl; // prints 2
+  g(x); // print’s g’s x is 4
+  cout << x << endl; // prints 4
+  return 0;
+}
+```
+
+Most languages only have one way of passing arguments
+* `C`: arguments are always passed by value; function always gets its own copy
+* `Java`: arguments are always passed by reference; function sees the same object the caller passed (exception: built-in numeric types like int are passed by value)
+
+### Pro's / Con's of passing by value, reference
+
+__Passing by value__
+*  <span style="color:blue">(+)</span> very safe to call a function that takes its arguments by value because the function you called can’t actually see the object you passed it
+*  <span style="color:red">(-)</span> Copying an object may be very expensive (e.g. a map with a million key-value pairs)
+*  <span style="color:red">(-)</span> Doesn’t work with inheritance/OO
+  * If I copy an `Animal`, but it’s really a `Gorilla`, my copy will only have `Animal` fields (and virtual methods may try to reference non-existent `Gorilla` fields, crashing my program!)
+*  <span style="color:red">(-)</span> can't modify the caller’s object 
+*  <span style="color:red">(-)</span> Some objects are not copyable. E.g., `cout`, abstract types, `unique_ptr`
+
+__Passing by reference__
+*  <span style="color:red">(-)</span> dangerous to call a function that takes its arguments by reference because it may unexpectedly modify your object
+*  <span style="color:blue">(+)</span> can fix this by passing the argument by `const` reference, which says the function is not allowed to modify it (e.g., by calling a non-const method on it)
+  * `void f(int const &i) { i = 3; // illegal: i is const}`
+*  <span style="color:blue">(+)</span> Efficient, since object doesn’t need to be copied
+*  <span style="color:blue">(+)</span> Works with inheritance/OO (No slicing because I am working with the original object)
+*  <span style="color:blue">(+)</span> can modify the object if desired and appropriate
+*  <span style="color:red">(-)</span> Managing memory is difficult
+  * if object has many owners, how do I now when it is safe to delete. Will learn best practices around this later
+
+### Should `operator<<` be a class member?
+
+It feels like it should, but the problem is that the first argument is `std::ostream&`, which means we would
+have to make it a member of class `std::ostream`
+* but can't modify standard library classes
+* so, it is typically defined as a global
+* however, there is an advanced way to put it inside the class
+  * C++ lets us put global functions inside the class definition as long as we precede it by `inline friend`
+  * https://stackoverflow.com/questions/10787655/c-friend-declaration-declares-a-non-template-function
+
+### Compared to other languages
+
+![alt text](pics/p6.JPG "Title")
+
+## Special Members
+
+What can go in a class?
+* __data members (fields)__
+* __member functions (methods)__
+
+Other Special class members:
+* __Static members__ (static fields, static methods)
+* Implicitly-generated default constructors
+* Implicitly-generated copy constructors
+* Implicit aggregate construction
+* Implicitly-generated destructors
+* Type conversions
+* Overloaded operators
+* Spoiler: Move constructors (later)
+
+### Static Class members
+
+* usually a class member depends on a class _object_
+```c++
+struct S { int i; double d };
+S s; // Need an s to access i
+s.i = 3; 
+```
+* Sometimes you want the same class member to be shared by all objects of a class
+```c++
+struct CountedObject {
+  CountedObject() { objectCount++; }
+  ~CountedObject() { objectCount--; }
+  static size_t objectCount; // shared by all instances of CountedObject
+};
+
+CountedObject c1, c2;
+cout << CountedObject::objectCount; // 2
+```
+
+### Initializing static class members
+
+__warning__: for technical reasons, you may have to initialize static data members class types in a separate .cpp file
+* So its memory is only allocated once, not every time the header is included
+```c++
+// A.h
+struct A { static B ab; };
+// A.cpp
+B A::ab("xyz");
+```
+
+Methods can be static too
+```c++
+struct CountedObject {
+  
+  CountedObject() { objectCount++; }
+  ~CountedObject() { objectCount--; }
+  
+  static size_t memUsed() {
+    return objectCount * sizeof(CountedObject);
+  }
+  
+  static size_t objectCount;
+};
+
+CountedObject c1, c2;
+cout << format("{} objects using {} chars",
+CountedObject::objectCount, // access class static field
+CountedObject::memUsed()); // invoke class static method
+```
+
+## Constructors, Destructors
+
+multiple ways to invoke constructor(s)
+```c++
+// construction.cpp on chalk
+#include <initializer_list>
+using std::initializer_list
+
+struct A {
+  A(int i, int j = 0); // #1
+  explicit A(int i); // #2
+};
+
+struct B {
+  B(int i, int j); // #3
+  B(initializer_list<int> l); // #4
+};
+
+int main() {
+  A a0 = 3; // A(3, 0) #1
+  A a1(3); // A(3) #2
+  A a1{3}; // A(3) #2. Uniform init: best practice but
+
+  B b0(3, 5); // #3
+  B b00 = {1, 2, 3, 4}; // #4
+  B b1 = { 3, 5}; // #4
+  B b2{3, 5}; // #4 Initializer list is preferred
+}
+```
+
+### Constructor signatures
+
+```c++
+struct A {
+  A(int _i = 0) : i(_i) {} // (initialize i in the initalizer list ?)
+  A(int _i = 0) : i{_i} {} // Alternate (initialize i in the initalizer list ?)
+  A(int _i = 0) { i = _i; } // // Alternate 2 (initialize i in the body)
+int i;
+};
+```
+
+### Constructors for fundamental types
+
+fundamental types don't have constructors, creating one without an initializer gives you garbage values
+```c++
+int i; // i could be anything`
+```
+* Reading uninitialized memory like this is a common source of bugs
+* If you explicitly pass it zero constructor arguments, the memory is zero-initialized
+```c++
+int i{}; // i is 0
+```
+
+### Special Constructors
+
+to make it easier to create objects, C++ automatically generates some constructors for you
+* Default constructor
+* Copy constructor
+* Aggregate construction
+* Move constructor (later)
+
+### Default constructor
+
+Suppose I don’t declare any constructors for my class
+```c++
+struct S {
+  int i;
+  double d;
+};
+```
+Will it be impossible to construct an object of type S? No! That would break compatibility with C and feel punitive
+```c++
+S s; // Valid C;
+```
+* If you don’t declare any constructors, C++ will create a no-argument constructor for you even though `S` was declared without an explicit constructor
+* compiler generates a constructor as if you wrote:
+```c++
+struct S {
+  S() {}
+  int i;
+  double d;
+};
+```
+
+what if you don't want your own default constructor?
+* For example, if I default-constructed an `S` object, I would get uninitialized memory
+```c++
+S s; // s.i and s.d are garbage
+```
+One option is to write your own default constructor, and the compiler won’t generate one
+```c++
+struct S {
+  S() : i(), d(1.2) {
+
+  }
+  int i;
+  int j;
+};
+
+S s; // s.i == 0, s.j =- 1.2
+```
+
+#### Non-Static Data Member Initializers
+
+While the previous slide works, it “feels” like the problem isn’t with `S`’ constructor but with `i` and `d`
+* you can provide default initializers for members and the compiler-generated default constructor will do the right thing
+```c++
+struct S {
+  int i = 0;
+  double j = 1.2;
+};
+
+S s; // s.i == 0, s.j = 1.2
+```
+* For technical reasons, static data members cannot be initialized in class (hence the name)
+
+#### What if you don't want a default constructor at all?
+
+* Our `Student_info` constructor expected a `name`
+* If the compiler generated a default constructor, we would get invalid nameless students
+* Fortunately, if you define any constructor, the compiler won’t generate a default constructor
+```c++
+Student_info si1("Mike"); // OK
+Student_info si2; // ill-formed! Will not compile
+```
+
+#### What if you want a default constructor anyway?
+
+* Suppose we were OK with nameless students
+* We could write a default constructor, but the compiler-generated one is really what we wanted, so we just say it has the `default` definition
+```c++
+struct Student_info {
+  Student_info(string n) : name(n) {}
+  Student_info() = default; // what the compiler WOULD generate if an above constructor was not defined
+  name = "Mofei";
+  /* ... */
+};
+```
+
+### Copy Constructor 
+
+Besides default construction, you might construct a new `S` object by copying an existing one
+```c++
+S s;
+S s2 = s; // "copying"
+// this is valid c, so it is not illegal!
+```
+The compiler implicitly generates a copy constructor that copies all of the base classes and members (in the order described last
+week), as if you wrote
+```c++
+struct S {
+  S(S const &s) : i(s.i), d(s.d) {
+
+  }
+  int i{};
+  double d = 1.2;
+};
+```
+
+#### What if the compiler generates the wrong copy constructor?
+
+* While convenient, the compiler-generated copy constructor is not always correct
+* For example, suppose you have a binary tree class
+* The compiler-generated copy constructor would only copy the root, leaving us with tangled trees
+* can write our own like so:
+```c++
+struct BinaryTree {
+  BinaryTree(BinaryTree const &b) { /* ... */ }
+  /* ... */
+};
+```
+
+#### What if I don’t want a copy constructor at all?
+
+* One important design pattern is the “_Singleton Pattern_” that represents a class that only ever has one object
+* For example, you may want to guarantee that all of your program uses the same Logger
+* In this case, delete the copy constructor as below
+```c++
+struct Logger {
+  Logger(Logger const &) = delete;
+  static Logger myLogger;
+private:
+  Logger() { /* ... */; }
+  /* ... */
+};
+```
+
+#### Aggregate Construction
+
+What if the user wanted to create `S` with specific values for `i` and `d`?
+```c++
+S s = { 5, 6.7 };
+```
+* If a class is like a simple data structure with public members, C++ considers that to be an __aggregate__ and generates a
+constructor that takes `initializer`
+* In effect, `S` behaves as if it had the following constructor
+```c++
+struct S {
+  S(int const &i, double const &d) : i(i), d(d) {} 
+};
+
+S s = {1, 2.3}; // OK
+S s2 = {.i =1, .d = 5.2 }; // OK. Designated initializer
+```
+
+> This is a little bit of an oversimplification as a constructor is not actually synthesized here for highly technical reasons, but “close enough for jazz.”
+
+### Destructors
+
+Classes have “__destructor__” methods that do any needed cleanup when the object goes away
+* When an object in memory goes away, its destructor is always called
+* can write a destructor for a class
+```c++
+struct A {
+  ~A() {
+  /* Code to cleanup resources used by A */
+  }
+  /* ... */
+};
+```
+* If you don’t write one, the compiler will generate it for you, called the _default destructor_
+  * This will simply destroy all of the fields and base classes in the reverse of the order we gave for
+constructing them
+
+#### Virtual Destructors
+
+* Suppose we have a `unique_ptr<Animal>` managing an object of dynamic type `Gorilla` at runtime
+* Which destructor will be called?
+* Same rule as other methods. If `Animal`'s destructor is not `virtual`, it will be called. If it `virtual`, then `Gorilla`'s
+* __Best Practice__: Classes that are meant to be inherited from should have a virtual destructor. `virtual ~Animal() = default;`
+* You may have gotten some warnings that our Grading program neglected this best practice (didn't know about destructors yet!)
+
+#### Review: `unique_ptr`
+
+A `unique_ptr` is a class that manages an object in memory
+* It can give you a reference to the object
+* It cleans up the object it is managing when it goes away
+```c++
+void f() {
+  // Create a unique_ptr with make_unique
+  auto up = make_unique<vector<int>>({1, 5, 3});
+  sort(up->begin(), up->end());
+  // up cleans up the vector when you leave f
+}
+```
+
+How does `unique_ptr` clean up memory?
+* `unique_ptr` has a specially written destructor that calls the destructor of the managed object and then releases the object’s memory
+* This is why memory management takes 40% of C development time but little in C++
+* This same technique is useful for many purposes, so it has a special name – __RAII__, which we will discuss later today
+
+## Type Conversions
+
+### Implicit type conversions
+
+__built-in__ type conversion
+```c++
+int i = 780;
+long l = i;
+char c = 7;
+char c = i; // No warning, but dangerous!
+```
+
+__Polymorphism__ type conversion
+```c++
+unique_ptr<Animal> ap = make_unique<Dog>("Champ");
+void f(Dog &dr) { Animal &ar = dr; }
+```
+
+__User-defined__ type conversion
+* Constructors
+* Operator overloading
+
+__“Standard Conversions”__
+* defined in clause 4 of the standard
+
+#### Constructors and typecasts
+
+```c++
+struct A {
+  A();
+  A(int i); // Creates a type conversion
+  A(int i, string s);
+  explicit A(double d); // Does not create a conversion
+};
+
+A a;
+A a0(1, "foo");
+A aa = { 1, "foo"};
+A a1(7); // Calls A(int)
+a1 = 77;// ok
+A a3(5.4); // Calls A(double)
+a3 = 5.5; // Calls A(int)!!
+```
+
+#### Type conversion operators
+
+```c++
+struct seven {
+  operator int() { return 7; }
+};
+
+struct A {
+  A(int);
+}
+
+int i = seven();
+A a = 7;
+A a = seven(); // Ill-formed, two user-defined
+// conversions will not be implicitly composed
+```
+
+### Explicit Conversion
+
+__Old-style C cast__ (legal but bad!)
+* `char *cp f(void *vp) { return (char *)vp; }`
+
+New template casting operators:
+
+__`static_cast<T>`__
+* Like C casts, but only makes conversions that are always valid. E.g, convert
+one integral type to another (truncation may still occur). 
+
+__`dynamic_cast<T&>`__: 
+* Casts between reference types. Can even cast a `Base&` to a `Derived&` but only does the cast if the target object really is a `Derived&`.
+* Only works when the base class has a vtable (because the compiler adds a secret virtual function that keeps track of the real run-time type of the object).
+* If the object is not really a `T&`, `dynamic_cast<T&>` throws `std::bad_cast`
+
+__`reinterpret_cast<T*>`__:
+* Does a bitwise reinterpretation between any two pointer types, even for unrelated types. Never changes the raw address stored in the pointer. Also can convert between integral and pointer types.
+
+__`const_cast<T>`__
+* Can change constness or volatileness only. There are usually better alternatives
+
+## Operator Overloading
+
+You can overload operators just like functions
+* can overload the __unary operators__
+  * `+ - * & ~ ! ++ -- -> ->*`
+* can overload the __binary operators__:
+  * `+ - * / % ^ & | << >>`
+  * `+= -= *= /= %= ^= &= |= <<= >>=`
+  * `< <= > >= == != && ||`
+  * `, [] () <=>`
+  * `new new[] delete delete[]`
+* CANNOT overload `. .* ?: ::`
+
+### Sometimes you have a choice whether to use a special member
+
+```c++
+class myString {
+  myString(const char *cp);
+  char operator[](size_t idx) const;
+  myString operator+(myString const &addend) const; // the const keyword refers to const on the self passed in auto as first arg
+  myString operator+=(myString const &addend);
+};
+
+// Alternatively
+myString
+operator+(const myString &s1, const myString &s2);
+
+myString
+operator+=(const myString &s1, const myString &s2);
+```
+
+Which way of overloading addition is better?
+* Consider `"Hello " + myString("World")`
+* Doesn’t work for the member function
+  * The first argument isn’t even a class, so the compiler wouldn’t know where to look for a member function.
+* What about `myString("World") + "Hello "`
+  * adding as a member function to myString works, AND as a global function
+* Using a global function makes sure both arguments are treated the same way, which fits the intuition that addition operators, which are generally commutative, should apply the same rules to each arguments.
+
+e.g. printing
+```c++
+ostream&
+operator<<(ostream &os, myString const &ms) {
+  // ...
+}
+myString ms("foo");
+cout << ms;
+```
+
+> In our Pascal’s triangle implementation, we wrote an `ostream` insertion operator
+```c++
+ostream&
+operator<<(ostream &, Triangle const &);
+```
+* In our original implementation, `Triangle` was a type alias (synonym) for `vector<vector<int>>`
+* This worked for `Triangle`s, but it also means that someone trying to print a `vector<vector<int>>` that is
+not a Pascal’s triangle will be surprised that it is printed as a Pascal’s triangle
+* By making Triangle as class, it ensures `operator<<` will only be used for printing Pascal triangles
+
+#### Advanced: printing to general output streams
+
+ostream is really an instance of a class template
+```c++
+using ostream = basic_ostream<char, char_traits<char>>
+```
+To be able to print to any output stream, use a function template
+```c++
+auto&
+operator<<(basic_ostream<auto, auto> &os, A const &ms) {
+  os << 5;
+  return os;
+}
+
+void f() {
+  A a;
+  cout << a;
+  wcout << a; // OK
+}
+```
+
+#### How does an I/O manipulator get invoked
+
+Recall that endl is defined (as modulo some template complication that is irrelevant here) follows
+```c++
+ostream&
+endl(ostream &os) {
+  os << '\n';
+  os.flush();
+  return os;
+}
+```
+How come “`cout << endl;`” actually behaves as “`endl(cout)`”?
+```c++
+ostream&
+operator<<(ostream&os, ostream&(&manip)(ostream &)) {
+  return manip(os);
+}
+```
+
+#### How does a `unique_ptr` work?
+
+* Overloading `operator->()` and `operator*()` of course
+* `operator->()` overloads with a unique rule; keep doing `->` until it is illegal
+* the destructor calls the destructor of the managed object and releases its memory
+
+## C++ Object Lifecycle
+
+### Object duration
+
+__automatic storage duration__
+* local variables
+* lifetime is the same as the lifetime of the function/method
+__static storage duration__
+* global and static variables
+* lifetime is the lifetime of the program
+__dynamic storage duration__
+* lifetime is explicit
+* created with commands like `make_unique`
+* Programmer controls when it ends
+
+In all cases, the constructor is called when the object is created and the destructor is called when the object is destroyed
+
+#### Automatic Duration Objects
+
+Automatic objects are destroyed at the end of their scope
+```c++
+struct A {
+  A() { cout << "A() "; }
+  ~A() { cout << "~A()"; }
+};
+
+struct B {
+  B() { cout << "B()"; }
+  ~B() { cout << "~B()"; }
+};
+
+void f() {
+  A a;
+  B b;
+}
+
+int main() {
+  f(); return 0;
+}
+// Prints A() B() ~B() ~A()
+```
+
+Members have automatic duration too
+```c++
+struct A {
+  A() { cout << " A() "; }
+  ~A() { cout << " ~A()"; }
+};
+
+struct C {
+  C() { cout << " C()"; }
+  ~C() { cout << " ~C()"; }
+  A a; // Goes away when C does
+};
+
+void f() {
+  C c;
+} // Prints A() C() ~C() ~A()
+```
+
+#### Static duration objects
+
+* These objects have the same lifetime as the program
+* They are created (and their constructors called) when the program starts
+  * In the order they are declared within a file
+  * Order is undefined if they are in separately linked files
+  * Even before main()
+* They are destroyed (and their destructors called) when the program ends
+  * Right after main() returns
+
+creating static storage duration
+```c++
+int i; // Created at program start
+
+struct A {
+  static int j; // Created at program start
+  void f() {
+    static int k{}; // Created first time f() is called.
+    // Does not lose its value between calls
+  }
+};
+
+A a; // Created at program start
+static A a2; // Created at program start
+// a2 not visible outside of current translation unit
+
+void g() {
+  static A a3; // Created first time g() is called
+}
+```
+
+__Function-static lifetimes__
+* A static variable in a function is initialized the first time the function runs
+  * Even if the function is called from multiple threads, the language is responsible for making
+sure it gets initialized exactly once
+  * If the function is never called, the object is never initialized
+  * As usual, static duration objects are destroyed in the reverse order in which they are created
+
+#### Dynamic Duration objects
+
+* These are created and destroyed under the control of the program
+* Dynamic objects allow you to write programs whose data structures can be determined at runtime based on user input, etc.
+* As we’ve mentioned, you can control their lifetimes with a `unique_ptr`
+
+#### Case study: Why is cout safe to use?
+
+* There's something a little worrisome here. cout is a global object defined in the C++ run-time
+libary. The `<iostream>` header declares it as:
+`extern ostream cout;`
+* How do we know cout will be initialized before static_a?
+* Remember, order of static initialization is undefined for global objects defined in different source files
+* Advanced sharp corner but good for getting practice with object lifecycles
+
+_When does the global variable cout get constructed?_
+* If the standard library ignored the issue, it might or might not work, depending on whether cout or static_a is initialized first.
+* Unacceptable for static constructors not to be allowed to write to cout.
+* Fortunately, there is a static method `ios_base::init()` that initializes the standard streams.
+
+_Can we force cout to be initialized before static_a?_
+* Sure, use a static constructor ourselves
+```c++
+#include <iostream>
+using namespace std;
+
+struct ForceInitialization {
+  ForceInitialization() {
+    ios_base::Init(); 
+  }
+};
+
+ForceInitialization forceInitialization;
+
+struct A {
+  A() { cout << "Creating an A object" << endl; }
+};
+
+A static_a;
+```
+
+_Abstracting into a header_
+* We will need to include `ForceInit` in any file that might use cout during static initialization, so
+extract it into a header `ForceInit.h`
+```c++
+#include <iostream>
+struct ForceInit {
+  ForceInit() { 
+    std::ios_base::Init(); 
+  }
+}; 
+```
+* Oops, if the header is included multiple times in our .cpp file (including indirectly from other files we
+include), we will inadvertently call `Init()` twice!
+* We can fix with an (ugly) include guard
+  * Modules will fix right as we will learn later
+  * Most compilers also support #pragma once
+```c++
+#ifndef FORCE_INIT_H
+#define FORCE_INIT_H
+#include <iostream>
+struct ForceInit {
+  ForceInit() {
+    std::ios_base::Init();
+  }
+};
+
+static ForceInit forceInit;
+#endif
+```
+* In the file above, we needed to make `forceInit` static, so multiple files didn’t define the same global variable.
+* However, the previous file still isn’t right because `ios_base::Init()` will be called once for each source file, and we only want to call it once.
+
+_Preventing multiple initialization_
+```c++
+#include <iostream>
+namespace cspp51044 {
+  struct ForceInit {
+    ForceInit() {
+      if(count == 0) {
+        count = 1;
+        ios_base::Init();
+      }
+    }
+  private:
+    static int count;
+  };
+static ForceInit forceInit;
+}
+```
+This idiom is extremely useful, and is actually part of the iostream header, so as long as you include iostream above where you use
+cout, you’re (almost) OK
+
+_What if we want our object to outlive the automatic scope?_
+* It might be that we want our dynamic object to be longer-lived than the unique_ptr that is managing it
+* Just transfer ownership to another `unique_ptr`
+  * `up2 = move(up);`
+* This allows us to chain into new scopes while always maintaining an owner of the object
+
+
+# Lec 4
+
+## C++ Algorithms
+
+* We have explored standard library algorithms like `transform`, `accumulate`, and `inner_product`
+* C++ algorithms are designed to interact with `lambdas`
+* There are some problems with the model of C++ algorithms (mainly lack of compositionality)
+
+### Callables
+
+* In our algorithms, it is often good to pass things that can be called
+  * functions can be called, but there are other useful constructs too
+  * functions:  `double f(int i) { return 3.2 * i; }`
+
+#### Lambdas
+
+* anonymous-like function; e.g. `[](int x)->int { return x*x; }`
+
+Lambdas return values
+* If your lambda does not contain return statements that return different types, the compiler can usually figure out the return type
+without your saying anything
+```c++
+[](int x, int y) {
+  int z = x + y; return z + x;
+} // return type inferred
+```
+* If needed, you can explicitly specify the return type with the following notation
+```c++
+[](int x, int y) -> int {
+  int z = x + y; return z + x;
+}
+```
+
+--- 
+__Capture Lists__
+* To capture local variables by reference, use __`[&]`__
+* To capture local variables by value, use __`[=]`__
+```c++
+auto f() {
+  int i{3};
+  auto lambda = [=](){ cout << i; }; // lambda has a copy of i
+  return lambda;
+}
+// Even if the original i has gone away, you can still run lambda
+f()(); // prints 3 even though original i no longer exists
+```
+* C++ annoyingly makes `const` copies, so they may be hard to modify. You can turn this off with the keyword __`mutable`__ as follows
+```c++
+int i{3};
+auto lambda = [=]() mutable { cout << i++; }; // lambda has a copy of i
+// Note: Only modifies lambda’s i, not the original variable
+```
+* for fancier capture rules https://en.cppreference.com/w/cpp/language/lambda 
+
+---
+__Lambdas and Algorithms__
+* Now all of the standard library algorithms can be used as easy as for loops
+```c++
+std::vector<int> someVec;
+int total = 0;
+std::for_each(someVec.begin(), someVec.end(), [&](int x) { total += x; }); 
+```
+
+__Lambdas are not necessarily functions__
+* While lambdas act a lot like functions, they may not actually be functions
+```c++
+int i = 7;
+auto x = [&i](int j) { return i*j; }
+/* ... */
+cout << x(5);
+```
+* `x` isn’t really a function because it doesn’t just depend on its argument `j`, it also depends on
+the captured reference to `i`
+
+__How are lambdas implemented?__
+* Lambdas are actually implemented as classes that overload `operator()`
+* The lambda above actually has a type that looks something like
+```c++
+struct X {
+  X(int &i) : i(i) {} // Captures i
+  int operator()(int j) {
+    return i*j;
+  }
+  int &i;
+};
+```
+
+__Polymorphic Lambdas__
+* Lambdas can take `auto` parameters and inference them
+```c++
+[](auto x) { return x*x; }(7); // 49
+[](auto x) { return x*x; }(7.5); // 56.25
+```
+* How does this work? Again, the type of the above lambda is a class with an overloaded `operator()`
+```c++
+struct polymorphicSquare {
+  auto operator()(auto x) { return x*x; }
+};
+```
+
+__Using a Lambda with an algorithm__
+```c++
+// print the number of even members of a vector
+// using a for loop
+vector v = {2, 5, 6, 9};
+size_t evenCount = 0;
+for(int i: v)
+  if(i % 2 == 0) evenCount++;
+cout << evenCount;
+
+// with algorithm
+vector v = {2, 5, 6, 9};
+cout << v.count_if([](int i) { return i%2 == 0; });
+```
+
+__Captures can be helpful too__
+```c++
+// draw a hand of cards for each player
+// using a for loop
+CardDeck d;
+vector<Person> players;
+for(auto p: players) {
+  p.hand = d.draw();
+}
+
+// with algorithm
+CardDeck d;
+vector<Person> players;
+for_each(players, [&](auto p) {p.hand = d.draw(); }
+```
+
+#### Functors
+
+__functor__: a class with an overloaded operator()
+* allows you to create stateful objects that can be called like functions
+* lambdas are often implemented as functors
+```c++
+struct Accumulator {
+  int()(int j) { i = i + j; return i }
+  int i = 0;
+};
+
+Accumulator acc;
+cout << acc(1); // Prints 1
+cout << acc(2); // Prints 3 = 1+2
+cout << acc(4); // Prints 7 = 1+2+4
+```
+
+### Notable C++ Algorithms
+
+* `all_of`
+* `any_of`
+* `none_of`
+* Check if all/any/none of the items in a container (or range) have a certain property
+* `copy_n`
+```c++
+vector<int> v = getData();
+// Print 5 elements
+copy_n(v.begin(), 5, ostream_iterator<int>(cout, "\n"));
+```
+* `find_if_not`
+```c++
+vector<int> v = { 1, 3, 5, 6, 7};
+// Print first elt that is not odd
+cout << *find_if_not(v.begin(),v.end(),[](int i) {return i%2 == 1;});
+```
+* `partition_copy`
+```c++
+vector<int> primes;
+vector<int> composites;
+vector<int> data = getData();
+extern bool is_prime(int i);
+partition_copy(data.begin(),data.end(),back_inserter(primes),back_inserter(composites),is_prime);
+```
+* `minmax`, `minmax_element` (Gets both the biggest and smallest items in the range)
+* `is_heap`, `is_heap_until`, `is_sorted`, `is_sorted_until`, `partial_copy`
+* ranged versions of `move`
+
+### Parallel Algorithms
+
+many standard library algorithms can run in parallel
+* Just pass them a parallel execution policy as a first argument `sort(execution::par_unseq, v.begin(), v.end());`
+* This does a parallel sort that can even (in principle) take advantage of GPUs
+* https://devblogs.microsoft.com/cppblog/using-c17-parallel-algorithms-for-better-performance/
+
+### Drawbacks of C++ `algorithms`
+
+They have several problems that are becoming increasingly problematic as functional programming becomes more popular
+* They can’t be composed
+  * In our transform then accumulate problem, we had to awkwardly create an (irrelevant) intermediate vector instead of just chaining 
+  * They can’t work on infinite streams (it would take forever to create the intermediate vector)
+  * cumbersome notation (Why do I have to say `sort(v.begin(), v.end())` instead of `sort(v)`?)
+
+## `ranges`
+
+Ranges are a work in process replacement for the C++ standard library algorithms
+* ranges are composable so you can feed one algorithm into another
+* Work directly on ranges rather than iterator pairs for natural usage
+* ranges are Lazy for efficiency because you don’t have to create intermediate containers holding all of the elements from
+each step
+* Fully conceptized for improved safety and error messages
+
+```c++
+#include<ranges>
+#include<vector>
+#include<iostream>
+#include<algorithm>
+#include<iterator>
+#include<string>
+using namespace std::ranges;
+using std::vector;
+using std::string;
+using std::ostream_iterator;
+
+int main()
+{
+  vector vi{9, 3, 2, 8, 5, 6, 7, 4, 1, 10};
+  std::ranges::sort(vi);
+  auto rng = vi 
+    | views::filter([](int i){ return i % 2 == 1; })
+    | views::transform([](int i){ return i*10; });
+  copy(rng, ostream_iterator<int>(std::cout, "\n"));
+}
+```
+
+```c++
+#include<ranges>
+#include<vector>
+#include<iostream>
+#include<algorithm>
+#include<iterator>
+#include<string>
+using namespace std::ranges;
+using std::vector;
+using std::string;
+using std::ostream_iterator;
+
+int main()
+{
+  copy(views::iota(1, 10)
+    | views::transform([](int i) { return i*(i+1)/2; }), ostream_iterator<int>(std::cout, "\n"));
+}
+```
+
+* a limited amount of ranges got into `c++20` (not enough to be useful)
+* However, the open source implementation the standard is based on, Eric Niebler’s `Ranges v3` is very functional
+```c++
+#include <range/v3/all.hpp>
+#include <iostream>
+#include <vector>
+#include <cmath>
+// We will use ranges::accumulate and ranges::views::transform
+using namespace ranges;
+using std::vector;
+using std::cout;
+
+int square(int i) { return i*i; }
+int main() {
+    vector v = {4, 5, 6};
+    // HW 2.1.1
+    auto s = v | views::transform(square) | to<vector>();
+    cout << "{ " << s[0] << ", " << s[1] << ", " << s[2] << "}\n"; 
+     
+    // HW 2.1.2
+    cout << sqrt(accumulate(v | views::transform(square), 0.0));
+}
+```
+* `C++23` should be good enough for it to be the main approach for algorithms (although it doesn't yet seem
+implemented)
+* Warning: The final standard may differ in important ways from `Ranges v3`, so beware of technical debt
+
+## Best Practices on Special Member Functions
+
+### Rule of Three
+
+Even if you don't write them, the compiler automatically generates a
+* __copy constructor__
+* __copy assignment operator__
+* __destructor__
+
+```c++
+// copy constructor
+struct X {
+  X(X const &); /* ... */ 
+};
+X x2(x1);
+
+// copy assignment operator
+struct X { 
+  X& operator=(X const &); /* ... */ 
+};
+x2 = x1;
+
+// destructor
+struct X { 
+  ~X(); /* ... */ 
+};
+```
+
+trick question, which is called in the following operation: `X x2 = x1;`?
+* Answer. Copy constructor! Although it looks like an assignment, it is constructing a new object, not copying over an existing object
+
+* Although the compiler generates these 3 functions, the built-in ones often aren't what you want
+* This typically occurs when you need special copying behavior like a deep copy
+  * Which usually means you need to do a deep copy-assignment and a deep
+
+__Rule of Three__: if you class defines any of the following:
+1. copy constructor
+2. copy assignment constructor
+3. destructor
+you should consider whether you need to define all three
+
+Example: in animal game example, our Node class is not copyable
+```c++
+class Node {
+public:
+	Node(string name);
+  Node(unique_ptr<State> s) : state(move(s)) {}
+	void reset(string name);
+  void process();
+  unique_ptr<State> state; // CANT BE COPIED!
+};
+```
+We could make it copyable like so:
+```c++
+class Node {
+public:
+	Node(string name);
+  Node(unique_ptr<State> s) : state(move(s)) {}
+  Node(Node const& src) {}
+	void reset(string name);
+  void process();
+  unique_ptr<State> state;
+};
+```
+
+## Rule of Big Two
+
+Sometimes you do not need to make a destructor because e.g. `unique_ptrs` are used, which does automatic memory management
+
+__Rule of Big Two__: you don't need to worry about the destructor if the member destructors clean everything up
+* this can be generalized with the _RAII_ principle
+
+## Base classes should have virtual destructors
+
+If you have a class that is designed to be inherited from
+* Make sure its destructor is virtual
+* Since it might get destroyed by a `unique_ptr` to the base type
+```c++
+struct Animal {
+  /* ... */
+  virtual ~Animal() = default;
+};
+```
+
+## `Templates`
+
+### Generic Programming
+
+There are several ways to write code that can apply the same behavior across different types. The most common are:
+* _object-orientation_
+* _templates_
+
+The terms template and generics are used almost synonymously in C++
+
+### templates: functions
+
+__simple function template__
+```c++
+auto square(auto x) {
+  return x*x;
+}
+int i = square(21); // 441
+double d = square(2.1); // 4.41
+```
+
+Note, a function template is not really a function
+* it is a "template" that the compiler can use to create functions
+* `square(21)` created a function `square<int>` from
+the template, compiles it and then builds a call
+* `square(2.1)` is a call to `square<double>`
+* If we later call square(5), the compiler will observe that the function square<int> already was created and just builds a call to it
+
+consider the OO code
+```c++
+struct Animal {
+  virtual string name() = 0;
+  virtual string eats() = 0;
+};
+
+class Cat : public Animal {
+  string name() override { return "cat"; }
+  string eats() override { return "delicious mice"; }
+};
+// More animals...
+
+int main() {
+  unique_ptr<Animal> a = make_unique<Cat>();
+  cout << "A " << a->name() << " eats " << a->eats();
+}
+```
+don't need to use OO though. Consider new code:
+```c++
+struct Cat {
+  string eats() { return "delicious mice"; }
+  string name() { return "cat";}
+};
+// More animals...
+
+int main() {
+  auto a = Cat();
+  cout << "A " << a.name() << " eats " << a.eats();
+}
+```
+simpler but
+* We lost the understanding that `a` is an animal
+* `a` could have the type `House` or `int` and we
+might not find out that something went wrong
+until much later when we did something that
+depends on a being an `animal`
+
+What we need is a way to codify our
+expectations for a without all of the overhead
+and complexity of creating a base class
+
+### Concepts
+
+Concepts play the analogous role for generic
+programming that base classes do in object oriented
+programming
+* A __concept__ explains what operations a type supports
+* __concept__ encapsulates the same info
+as the base class
+```c++
+template<typename T>
+concept Animal = requires(T a) {
+  { a.eats() } -> convertible_to<string>;
+  { a.name() } -> convertible_to<string>;
+};
+```
+* now, we can ensure that `a` represents an `animal`
+* With the above `concept` defined, we can
+specify that a must satisfy the `Animal`
+concept, and the compiler will not let us
+initialize it with a non-Animal type like `House`
+or `int`
+```c++
+int main() {
+  Animal auto a = Cat();
+  cout << "A " << a.name() << " eats " << a.eats();
+}
+```
+
+full example
+```c++
+// Familiar OO Version
+#include<string>
+#include<memory>
+#include<iostream>
+using namespace std;
+
+struct Animal {
+    virtual string name() = 0;
+    virtual string eats() = 0;
+};
+
+class Cat : public Animal {
+    string name() override { return "cat"; }
+    string eats() override { return "delicious mice"; }
+};
+// More animals...
+
+int main() {
+    unique_ptr<Animal> a = make_unique<Cat>();
+    cout << "A " << a->name() << " eats " << a->eats();
+}
+```
+
+
+```c++
+// Concept version like normal programming
+#include<string>
+#include<type_traits>
+#include<iostream>
+
+using namespace std;
+
+template<typename T>
+concept Animal = requires(T a) {
+    { a.eats() } -> convertible_to<string>;
+    { a.name() } -> convertible_to<string>;
+};
+
+struct Cat {
+    string eats() { return "delicious mice"; }
+    string name() { return "cat";}
+};
+// More animals...
+
+int main() {
+    Animal auto a = Cat(); // type of a is a cat
+    cout << "A " << a.name() << " eats " << a.eats();
+}
+```
+
+## Kinds of templates
+
+* __function templates__, like `std::sort`
+* __class templates__, like `std::vector`
+* __variable templates__
+  * example of a pi template supporting different floating point types
+  * https://en.cppreference.com/w/cpp/language/variable_template
+
+### Class Templates (Matrix example)
+
+* To learn about class templates, we are going
+to create a "dense" matrix library
+* This will also be a great opportunity to review
+the C++ features we have been learning and
+see how they combine to make an awesome
+library
+* We are (very) loosely inspired by the matrix
+classes from the Origin C++ libraries, and
+lectures from Bjarne Stroustrup and Andrew
+Sutton
+
+__Sometimes you need a more verbose notation__
+* For function templates, we could simply use “`concept auto`” arguments
+* If I have a class template, there are no “arguments,”
+so you put them up front in a “template” header. This is also useful if you need a name for the type
+* You can use a concept
+```c++
+template<floating_point T> struct complex;
+```
+*  or if you don’t want to constrain, just say typename (This is all we had until C++20)
+```c++
+template<typename T> // Simple vector def
+struct vector { /* ... */ };
+```
+
+#### Matrix
+
+* A matrix is just a two dimensional array of numbers (picture from Wikipedia)
+* Matrices are used in all branches of science,
+statistics, economics, math, etc. and can be
+added, multiplied, or have their determinants
+taken
+* We would like our Matrix class to have a
+natural initializer like the following 2x3 matrix
+```c++
+Matrix<2,3> m = { {2, 4, 6},
+                  {1, 3, 5}};
+```
+
+__Initializer List__: way to create object with a list
+* c++98 had an ugly way of handling this
+```c++
+int init[] = { 0, 1, 1, 2, 3, 5};
+vector<int> v(init,
+init+sizeof(init)/sizeof(init[0]);
+```
+* c++11, you can initialize vectors as easily as C arrays
+```c++
+vector<int> v = {0, 1, 1, 2, 3, 5};
+vector v = { 1, 2, 3, 4};
+```
+* How does `vector<T>` do this?
+* It has a constructor that takes a
+`std::initializer_list<T>`, which
+represents a “_braced initializer of Ts_” expression
+* Initializer lists have `begin()`, `end()`, and
+`size()` methods so your constructor can iterate
+through their value.
+```c++
+array<array<double, cols>, rows> data;
+
+Matrix(initializer_list<initializer_list<double>> init) {
+  auto dp = data.begin();
+  for (auto row : init) {
+    std::copy(row.begin(), row.end(), dp->begin());
+    dp++;
+  }
+}
+```
+
+__Matrix Arithmetic (operator overloading)__
+* In order to easily add and multiply matrices,
+we would like to be able to tell “`+`” and “`*`”
+about matrices
+* we do operator overloading to accomplish this
+* `Matrix.h` overloads matrix multiplication with the rule for multiplying matrices
+
+__Specializing and Overloading Templates__
+* The “secret sauce” for C++ templates is that if the general “generic” definition of the template isn’t really what you want for a particular set of template parameters, you can override it for that particular case with a __specialization__
+* Think of this as the compile-time analog to object orientation where you also override a more general method in a more specialized derived class
+
+__Matrix Determinant__: The determinant is a number that represents “how much a matrix transformation expands its input”
+* http://en.wikipedia.org/wiki/Laplace_expansion
+
+__Full Specialization__
+* A function, class, or member can be fully specialized
+```c++
+template<>
+double
+Matrix<1, 1>::determinant() const
+{
+	return data[0][0];
+}
+```
+
+__Overloading Function Templates__
+* can overload function templates
+```c++
+template<floating_point T>
+T
+determinantImpl(const Matrix<T, 1, 1> &m)
+{
+	return m(0, 0);
+}
+```
+
+__Partial Specialization__
+* Only classes may be partially specialized
+```c++
+// Template class
+template<class T, class U>
+class Foo { ... };
+
+// Partial specialization
+template<class T>
+class Foo<T, int> {...};
+```
+* You can tell the second is a specialization because of the <> after the class name
+* The partially specialized class has no particular relation to the general template class
+  * In particular, you need to either redefine (bad) or inherit (good) common functionality
