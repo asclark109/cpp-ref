@@ -6418,3 +6418,1718 @@ class Foo<T, int> {...};
 * You can tell the second is a specialization because of the <> after the class name
 * The partially specialized class has no particular relation to the general template class
   * In particular, you need to either redefine (bad) or inherit (good) common functionality
+
+# lec 5
+
+## Compilation of template methods
+
+You might wonder why `Matrix<int, 1,1>` objects can be created even though `Matrix<int,1,1>::minor(int, int)`
+doesn’t make sense (it would be a 0x0 matrix)
+* Answer: If a method of a template class isn't called, then it isn't compiled
+* Really helps us here, but sometimes you might wonder why, say, a static member is never compiled
+
+## `static_assert`
+
+What happens if we call `determinant()` on a non-square matrix?
+* get a compilation error because recursive method does not halt at 1x1 case
+
+C++ lets you create a compile-time assertion that prints a nice error message of your choice
+```c++
+static_assert(rows == cols,"Sorry, only square matrices have determinants");
+```
+
+## `*this`
+
+Sometimes a method needs a reference to the object it is a part of
+* `*this`
+In `OverloadMatrix`, `Matrix::determinant()` uses this to pass the containing Matrix to the external `determinantImpl` function
+```c++
+template<class T, int h, int w>
+T Matrix<T, h, w>::determinant() const
+{
+  return determinantImpl(*this);
+}
+```
+* This also comes in handy in the homework for overloading `Matrix::operator+=`
+
+## Inheriting Constructors
+
+It seems annoying that in `PSMatrix`, we can inherit everything but constructors from the common implementation even though they do the right thing
+* Indeed, the constructors don't even have the same names, because they are named after the class
+* Since classes often have many constructors, this can make it painful to build lightweight wrapper classes on top of others
+* We can solve this by saying we want to inherit constructors
+```c++
+class Matrix : public MatrixCommon < T, rows, cols > {
+  public:
+    // Matrix() = default;
+    // Matrix(initializer_list<initializer_list<T>> init) : MatrixCommon<T, rows, cols>(init) {}
+  using MatrixCommon<T, rows, cols>::MatrixCommon;
+```
+
+## Templates before concepts (prototypes)
+
+recap
+* Besides `auto`, the other major C++20 template feature is `Concepts`, which us allow us to constrain our templates
+```c++
+template<std::floating_point T, int m, int n = m>
+struct Matrix { /* ... */ };
+```
+
+_Other example_
+* The algorithms we've been discussing often require a `callable`
+* How would we write a function template that expects its argument is `callable` with an `int`?
+```c++
+void f(std::invocable<int> auto callable) {
+  callable(5); // https://godbolt.org/z/M8axbv7Ys
+}
+```
+* What if we just didn't use a Concept?
+```c++
+void f(auto callable) {
+  callable(5); // https://godbolt.org/z/M8axbv7Ys
+}
+```
+* It still works. I run with a valid `callable` and fails to compile if `callable` cannot be called with an `int`
+* However, the error will be inside the body of `f` where the call takes place
+* In this case, it's not a big deal since `f` is so simple
+* But let's look at some real-life examples where it really helps to constrain the template
+
+What goes wrong with the following natural code? _sorting_
+```c++
+template<typename T>
+void f(T &t) {
+  sort(t.begin(), t.end()); // OK
+}
+
+vector<int> v = { 3, 1, 4, 1};
+list<int> l = {5, 9, 2};
+f(v); // OK
+f(l); // Huge compiler error
+```
+`sort` requires random access iterators
+* Since lists need to be walked through a node at a time, their iterators are not considered random access
+* Somewhere deep inside of the sort algorithm, something goes wrong, leading to an incomprehensible error message
+* Might be hundreds of lines long
+
+You can't overstate what a big problem this is
+* As we’ve discussed numerous times, C++ is a language of lightweight abstractions
+* The theory of templates is to provide the ideal abstract interface at zero cost as a template library
+* In practice, that works well if your client uses your templates correctly
+* But any mistake leads to incomprehensible error messages
+
+Issue is easy to solve with __`Concepts`__
+```c++
+template<random_access_iterator it>
+sort(it beg, it end);
+```
+* Now the error would be something understandable like
+```c++
+"Sorry, list::iterator does not satisfy the random_access_iterator concept"
+```
+
+Worst case scenario, the code may run but give the wrong answer
+* Consider this implementation of the Greatest Common Divisor function based on Euclidean Algorithm
+```c++
+int gcd(int a, int b) {
+  if(b == 0)
+    return a;
+  return gcd(b, a – b*(a/b));
+}
+```
+* This efficiently and correctly calculates greatest common divisors. E.g., `gcd(48, 30)` returns `6`
+* Of course, we may want to take greatest common divisors of other types, like `unsigned`, `long`, etc.
+* so we turn it into a template
+```c++
+template<typename T>
+T gcd(T a, T b) {
+  if(b == 0)
+    return a;
+  return gcd(b, a – b*(a/b));
+}
+// This correctly calculates gcd’s like gcd(48,30), gcd(48u, 30u), gcd(48l, 30l), etc.
+```
+problem! there is a Lack of constraints on the parameter!
+* This function template can easily be instantiated with types that don't satisfy the assumptions on the parameters
+* `gcd(4.0, 6.0)` compiles but crashes at runtime
+  * Infinite recursion due to template rounding
+* Worse yet, `gcd(4.0, 8.0)` runs but gives the incorrect answer of `4.0.`
+  * (Any double divides any other double, so it makes no sense to call that the Greatest Common Divisor)
+
+We solve this problem with we need is prototypes for templates
+* In C++20, we can give an analogous "__prototype__" to our template
+```c++
+template<integral T>
+T gcd(T a, T b) {
+  if(b == 0)
+    return a;
+  return gcd(b, a – b*(a/b));
+}
+```
+In old school C++, we use 
+* __SFINAE__: “Substitution Failure is Not an Error”
+* When creating candidate overloads for a function, invalid substitutions in a particular function template mean that template is not a possible overload
+* But no compile error occurs even though the template failed to compile
+```c++
+struct Test {
+  typedef int foo;
+};
+
+template <typename T>
+void f(typename T::foo) {} // Definition #1
+
+template <typename T> void f(T) {} // Definition #2
+int main() {
+  f<Test>(10); // Call #1.
+  f<int>(10); // Call #2.
+  // Without error (even though there is no int::foo)
+  // thanks to SFINAE.
+} 
+```
+
+## `std::enable_if`
+
+```c++
+template <bool B, class T = void>
+struct enable_if {
+  typedef T type;
+};
+
+template <class T>
+struct enable_if<false, T> {};
+
+template<bool B, typename T>
+using enable_if_t = enable_if<B, T>::type;
+```
+
+## Using SFINAE to fix gcd function template
+
+We only want gcd to be used with integral types
+*  The standard library has an `is_integral_v` template that checks if a type is integral
+  * `is_integral_v<unsigned>` is true
+  * `is_integral_v<double>` is false
+* Only allow gcd to be called on integral types
+
+```c++
+template <class T, typename = enable_if_t<is_integral_v<T>>>
+T gcd(T a, T b) {
+  if(b == 0)
+    return a;
+  return gcd(b, a – b*(a/b));
+}
+```
+
+`enable_if<b, T>::type` is the type `T` if `b` is true
+* `enable_if<b, T>::type` is a substitution failure if `b` is false
+* Use it in template parameter lists, return values or argument types to suppress or enable the generation of certain template functions by SFINAE
+```c++
+gcd(4, 6); // OK
+gcd(4.2, 6.0); // Must be a different gcd
+```
+
+## `constexpr`
+
+`constexpr` allows you to do things at compile-time
+* Normally we think of programming as a way to write code that runs at runtime
+* It is surprisingly common that you need “something” to take place at compile-time instead of runtime
+
+Examples
+* _Template arguments need to be known at compile time_
+```c++
+int n;
+cout << "How big a matrix? ";
+cin >> n;
+Matrix<n, n> m; // Ill-formed!
+```
+*  Since we don’t know n at compiletime, the compiler can’t compile the class `Matrix<n, n>`
+
+* _compile sometimes rejects certain templates calls like so_
+```c++
+auto square(int x) { return x*x; } 
+Matrix<square(3), square(3)> m;
+```
+* we can see from looking at the code that `square(3)` is going to be `9`
+* The compiler can’t make that assumption; Imagine what would go wrong if it did
+  * Whether the code is legal would depend on whether the optimizer ran `square` at compile time or run-time (Which would just be weird)
+  * Also, if someone changed the body of `square`, it might no longer be computable at compile-time
+* Therefore, the compiler has to reject `square(3)` as a template argument just like it did n in the previous example
+
+### Doing things at compile-time can also help performance
+
+Not only do you need compile-time values for template arguments
+* But they benefit performance as well
+* Why compute the following every time the program is run? `double pi = 4 * atan(1);`
+
+a __constant expression (`constexpr`)__ is an expression that can be evaluated at compile-time
+* Built-in values like `3`, `2*7` and `false` are constant expressions
+* But since templates and performance programming are so important in C++, we would like to be able to create our own constant expressions
+* That is what `constexpr` does
+
+### `constexpr` variables
+```c++
+int constexpr seven = 7; // immutable
+// This means that wherever the compiler sees seven, it can substitute the constant expression 7
+```
+
+### `constexpr` functions
+
+* Consider `double const pi = 4*atan(1);`
+* Wouldn’t it be nice if that could be calculated at compile-time?
+* To say that a function is computable at compiletime, label it as `constexpr`
+```c++
+int constexpr gcd(int a, int b) {
+  return b == 0 ? a : gcd(b, a%b);
+}
+```
+When do `constexpr` functions run?
+* If the arguments are known at compile-time, the function may be run either at compile-time or at run time at the compiler’s discretion. E.g., gcd(34,55)
+* If the value is needed at compile-time, it is calculated by the compiler. E.g., as a non-type template parameter: `Matrix<gcd(34, 55)>`
+* If its arguments are not know at compile-time, it won’t be run until run-time 
+```c++
+void f(int i) {
+  return gcd(34, i); // i is unknown
+}
+```
+
+A constexpr function cannot contain just any code.
+* For example, if it contained a thread_local variable, what would that mean at compile-time?
+What is not allowed:
+* _Uninitialized declarations_
+* `static` or `thread_local` declarations
+* Modification of objects that were not created in the function (Or potential modifications by, say, calling a non-constexpr function).
+* _virtual methods_
+* _Non-literal return types or parameters_ (A type is literal if its constructor is trivial or `constexpr`)
+
+example: fixing `square`
+```c++
+auto square(int x) constexpr { // allows function to be used at compile time
+  return x*x;
+}
+
+Matrix<square(3), square(3)> m;
+```
+
+## `if constexpr`
+
+All of our Matrix examples may have seemed like overkill
+* If we really wanted a different determinant method for 1x1 matrices, how come we didn’t just use if to check if it is a 1x1 matrix and then use the right formula?
+```c++
+template<int r, int c = r>
+class Matrix {
+  /* ... */
+  double determinant() {
+    if(r == 1 && c == 1) // 1x1 Matrix
+      return data[0][0];
+    else {
+      double val = 0; // Bigger. Use formula
+      for (int i = 0; i < r; i++) {
+        val += (i % 2 ? -1 : 1) * data[i][0]
+          * minor(i, 0).determinant();
+      }
+    }
+    return val;
+  }
+}
+```
+* Unfortunately, that code won’t compile on a 1x1 matrix
+* The problem is that the else branch takes a minor of a 1x1 matrix, which doesn’t make sense (it would be a 0x0 matrix)
+* Wait a moment! If the matrix is 1x1, the else branch will never be run, so who cares?
+* Even though the else branch of the if will not run on a 1x1 matrix (since the condition is guaranteed to be true), the compiler still needs to compile it
+* But `Matrix<1, 1>::minor(i,0)` will be illegal gobbledygook, so the compilation fails
+* This seems really restrictive
+* Since the compiler can tell the else branch of the if won’t be run, why can’t it just ignore the illegal code inside it?
+* That’s where `if constexpr` comes in
+
+__`if constexpr`__: saying `if constexpr` rather than just `if` tells the compiler not to compile the branch not run if the condition is known at compile-time
+* Just replacing the `if` with `if constexpr` makes it work
+```c++
+template<int r, int c = r>
+class Matrix {
+  /* ... */
+  double determinant() {
+    if constexpr(r == 1 && c == 1) // 1x1 Matrix
+      return data[0][0];
+    else {
+      double val = 0; // Bigger. Use formula
+      for (int i = 0; i < r; i++) {
+        val += (i % 2 ? -1 : 1) * data[i][0]
+          * minor(i, 0).determinant();
+      }
+    }
+    return val;
+  }
+}
+```
+
+## `const` vs `constexpr`
+
+It is easy to confuse `const` and `constexpr`, but they mean different things
+* __`constexpr`__ means the value is known at compiletime
+```c++
+int constexpr seven = 7; // seven means 7
+```
+* __`const`__ means the value won’t be changed 
+```c++
+void f(int const &i);
+```
+  * We don’t know the value of `i` until runtime, but we know `f` won’t change it
+  * Actually, it is possible for `f` to change `i` (but it shouldn’t, so I will ignore it for now)
+
+## Sometimes you want to know the type of a value
+
+Suppose I don’t know what type an expression `x` is
+* Very possible in template code or with complex expressions (e.g., the type of `1u + 'c'` is implementation-defined depending on whether `char` is `signed` or `unsigned`)
+
+__`decltype(x)`__: gives you the type of `x`
+```c++
+Matrix<decltype(x), 1, 2> m = { {x, x} };
+```
+
+## `Move` Semantics
+
+recap: how to pass an argument
+* __Pass by value__ `void f(X x);` (function gets its own copy; doesn't change var in calling scope)
+* __Pass by reference__ `void f(X &x);` (function works with the caller's object through a reference variable)
+* __Pass by move__ `void f(X &&x); // What we will learn` (if the function is called on a temporary: can use parts from abandoned `x`)
+
+Most languages only have one choice
+* C passes by value,
+* Java by reference,
+* Rust by move
+
+C++ supports all 3
+
+__`Move`__: Means that the value of `x` is the same as the value `y` started at
+```c++
+// moving `y` to `x`
+x = move(y);
+```
+one way to do a _move_ this is by using ordinary copying like `x = y;`
+* However, the difference between a _copy_ and a _move_ is that `y` is allowed to be changed by the `move`
+* Subsequent code should not use the value of y
+
+__Reason to move rather than copy: efficiency__
+* Since a move can “raid the old object for parts,” it can be a lot more efficient
+  * Copying a tree requires copying all of the branches
+  * Moving a tree only requires moving the root
+
+__Reason to move rather than copy: Semantics__
+* Some classes don’t make sense to copy and therefore have deleted copy constructors
+```c++
+struct X {
+  X(X const &) = delete;
+  /* ... */
+};
+```
+* example: if you copied a `unique_ptr`, the managed object would be owned by two `unique_ptrs`. Don't want that!
+* Better to use a move
+
+_How does C++ know whether to move or copy?_
+* If it is sure that the old object doesn’t need its value any more
+* One way is if the old object is a __temporary value__ and has no name, so it can’t be referred to again
+```c++
+// example:
+// it is safe to `move` the `unique_ptr` returned by `make_unique` into `x`,
+// since that is the only place the return value is visible
+
+auto x = make_unique<X>(); // x owns the X obj
+```
+* The other way is if the programmer uses __`std::move`__ to say that it is ok to move
+```c++
+auto y = move(x); // Now y owns the X obj
+```
+
+## How does `move` work? Rvalue references
+
+* __Lvalue reference__: `&`
+* __Rvalue reference__: A reference with `&&` instead of just `&` can bind to a temporary and move it elsewhere.
+
+Objects are often much cheaper to “move” than copy
+* For example, deep copying a tree
+* Some objects, like `unique_ptr` can be moved but not copied
+```c++
+template<class T>
+void swap(T& a, T& b)// "perfect swap"(almost)
+{
+  T tmp = move(a); // could invalidate a
+  a = move(b); // could invalidate b
+  b = move(tmp); // could invalidate tmp
+} 
+```
+
+### _Example move semantics: putting items into a vector_
+
+Recall that `std::unique_ptr` is not copyable
+* Since they are movable, we can construct a temporary `unique_ptr` and move it into a vector
+```c++
+template<typename T> class vector {
+  // ...
+  push_back(T const &t);
+  push_back(T &&t);
+  // ...
+};
+
+vector<unique_ptr<btree>> vt;
+for(int i = 0; i < 10; i++) {
+  vt.push_back(make_unique<btree>());
+}
+```
+
+useful articles on Rvalue references
+* http://thbecker.net/articles/rvalue_references/section_01.html
+* https://medium.com/pranayaggarwal25/move-semantics-269e73287b63
+* Nico Josuttis, C++ Move Semantics: The Complete Guide - http://www.cppmove.com/
+
+### How to make a type movable
+
+First, you don't need to make a class movable.
+* It is only a performance optimization because C++ will just copy if there are no move operations
+* If moving is more efficient, you should create move constructors and move assignment operators, just like standard library containers do:
+```c++
+template<class T> class vector {
+  // ...
+  vector(vector<T> const &); // copy constructor
+  vector(vector<T> &&); // move constructor
+  vector& operator=(const vector<T>&); // copy assignment
+  vector& operator=(vector<T>&&); // move assignment };
+```
+* Sometimes, the compiler will automatically generate move constructors and move assignment operators that just move all the members
+  * Basically if you don't define a copy constructor/assignment operator or a destructor
+* If you want to force the compiler to generate the default move constructor even though it wouldn't normally, you can force that with `default`
+```c++
+struct S {
+  S(S const &); // OK, but stops move constructor generation
+  S(S &&) = default; // Gets it back
+  /* ... */
+};
+```
+
+### Rule of five?
+
+There is a lot of discussion about whether the rule of 3 should be extended to a “_rule of 5_,”
+* If you define any of
+  * The destructor
+  * The copy constructor
+  * Copy assignment operator
+  * Move constructor
+  * Move assignment operator
+* You should review that they all do the right thing because they are all related
+* C++11 deprecated some features to better mesh with the rule of 5
+
+### How is std::move implemented? (very advanced)
+
+see lecture 5 notes from MPCS 51044
+
+## Perfect Forwarding
+
+A lot of times you want to wrap a function and pass your arguments to it
+* “Every problem in programming can be solved with another layer of indirection”
+* This is surprisingly difficult because you have to properly forward all the different ways of passing parameters (e.g., lvalue references vs rvalue references)
+
+We will consider our own implementation of `make_unique` based on http://thbecker.net/articles/rvalue_references/section_07.html
+* Patterns like this that create objects are known as "__factory patterns__".
+
+### Naive implementation
+
+A first stab at `make_unique` would look something like
+```c++
+template<typename T, typename Arg>
+unique_ptr<T> makeUnique(Arg arg) {
+  return unique_ptr<T>(new T(arg));
+}
+```
+* This code assumes that `T` takes one constructor argument, But of course it might take more or fewer
+
+Can improve implementation with _variadics_
+* __variadics__: indicate a “pack” of template parameters
+* While there are a lot of details, the basic use is straightforward
+```c++
+template<typename T, typename... Arg>
+unique_ptr<T> makeUnique(Arg... arg) {
+  return unique_ptr<T>(new T(arg...));
+}
+```
+
+Looks alright, so what's wrong?
+```c++
+struct X {
+  X(int &i) { // This constructor modifies its argument
+    i++;
+  }
+};
+```
+* oops, the code modifies a copy of its argument
+```c++
+int i = 2;
+auto xp = makeUnique<X>(i); // i is still 2
+```
+* The point is that `makeUnique` infers that `Args...` is `int`, so `i` is _passed by value_.
+
+Maybe if we took our arguments by reference?
+```c++
+template<typename T, typename... Args>
+unique_ptr<T> makeUnique(Args &... args){
+  return unique_ptr<T>(new T(args ...));
+}
+```
+now it works
+```c++
+int i = 2;
+auto xp = makeUnique<X>(i); // i is 3
+```
+Not so fast!
+* Can’t bind a `T&` to an `rvalue`, so if I call `make_unique` with any rvalue arguments then I will get a compile error
+```c++
+struct X {
+  X(int const &);
+};
+
+new X(2); // Legal
+// We would like the following line
+// to also be able to create an X(2), but..
+makeUnique<X>(2); // Ill-formed!
+```
+What went wrong?
+* Our (current) argument list for `make_unique` tries to bind to `2` with an `int&`, but it obviously doesn’t make sense to refer
+to the constant numerical value 2 with an `int&` because such a non-const reference could try to change the value of 2!
+
+This gets to be an ugly mess real fast
+* We haven’t even considered if X has a move constructor yet
+* We might be able to get around this by creating a zillion overloads, but thinking about the case of X having a constructor that takes some arguments by value, some by reference, some by const reference, and some by rvalue reference means that `makeUnique` would really need a zillion overloads
+
+### Perfect-Forwarding `std::foward`
+
+How can we pass our arguments as-is to another function using that function’s signature
+* The standard supplies a __`std::forward`__ function that does exactly that
+```c++
+// Perfectly forwards everything
+template<typename T, typename... Args>
+unique_ptr<T> makeUnique(Args &&... args) {
+  return unique_ptr<T>(new T(forward<Args>(args)...));
+}
+```
+
+#### How does `std::foward` work?
+
+You definitely don’t need to understand this (or most of the preceding slides) to use `std::forward`
+* But if you are interested, it consists of two function templates
+```c++
+template< class T >
+constexpr T&& forward(remove_reference_t<T>& t ) {
+  return t;
+}
+
+template< class T >
+constexpr T&& forward(remove_reference_t<T>&& t ) {
+  return t;
+}
+```
+* For example, `forward<int const &>(7)` leverages the template collapsing rules to forward it as an `int const & && ≅ int const &` as desired
+
+## Threads (`<thread>`, `std::thread`, `std::thread::join`)
+
+Computers are not getting faster
+* Perhaps the biggest secret in computer progress is that computer cores have not gotten any faster in 15 years
+  * 2005’s Pentium 4 HT 571 ran at 3.8GHz, which is better than many high-end CPUs today
+  * The problem with increasing clock speeds is heat
+    * A high end CPU dissipates over 100 watts in about 1 cubic centimeter
+    * An incandescent light bulb dissipates 100 watts in about 75 cubic centimeters
+
+Computers are faster
+* Even though cores have not gotten faster, the continued progression of Moore’s law means that computers today have many cores to run computations in parallel
+  * Even cell phones can have 4 cores
+  * 12 to 24 cores are not unusual on high-end workstations and servers (24 to 48 if you count hyperthreading)
+
+What does this mean to me?
+* If you don’t want your code to run like it’s 2005, you need your code to run in parallel across multiple cores
+  * In other words, you need threads!
+
+```c++
+#include <iostream>
+#include <thread>
+
+void hello_threads() {
+  std::cout<<"Hello Concurrent World\n";
+}
+
+int main(){
+  // Print in a different thread
+  std::thread t(hello_threads);
+  t.join(); // Wait for that thread to complete
+}
+```
+* Constructing an object of type `std::thread` immediately launches a new thread, running the function given as a constructor argument (in this case, `hello_threads`)
+* Joining on the thread, waits until the thread completes
+* Be sure to join all of your threads before ending the program
+* Exception: Later we will discuss detached threads, which don’t need to be joined
+
+### Locks (`std::mutex`)
+
+The simplest way to protect shared data is with a __`std::mutex`__
+* Accessing the same data from multiple threads without using synchronization like mutexes is called a __data race__ error
+  * Don’t do this!
+
+How can we make sure we release the mutex when we are done no matter what?
+* RAII!
+* C++11 includes a handy RAII class __`std::lock_guard`__ for just this purpose.
+* C++17 adds __`std::scoped_lock`__ that can lock any number of locks without deadlocking!
+
+```c++
+std::list<int> some_list; // A data structure accessed by multiple threads
+std::mutex some_mutex; // This lock prevents concurrent access to the shared data structure
+
+void add_to_list(int new_value) {
+  // Since I am going to access the shared data struct, acquire the lock
+  std::lock_guard guard(some_mutex); // CTAD deduces lock_guard<mutex>
+  some_list.push_back(new_value);
+  // Now it is safe to use some_list. lock_guard destructor releases lock at end of function
+  /* ... */
+}
+
+bool list_contains(int value_to_find) {
+  std::lock_guard guard(some_mutex); // Must lock to access some_list
+  return std::find(some_list.begin(),some_list.end(),value_to_find) != some_list.end();
+}
+```
+
+### Locks (`std::shared_mutex`)
+
+A __`shared_mutex`__ can be acquired either in shared ownership mode or unique ownership mode
+```c++
+shared_mutex sm;
+shared_lock sl(sm);
+// RAII for acquiring sole ownership
+unique_lock ul(sm);
+```
+* Motivating use case: __reader-writer lock__
+* Multiple threads can read from a data structure at the same time as long as no thread is modifying it
+* If a thread is modifying the data structure, it should acquire sole ownership of the object so no thread sees the data structure in a partially modified state
+
+### Locks (Reader-Writer `shared_mutex`)
+
+```c++
+std::list<int> some_list;
+std::shared_mutex some_mutex;
+
+void add_to_list(int new_value) {
+  std::unique_lock guard(some_mutex); // Unique writer access
+  some_list.push_back(new_value);
+}
+
+bool list_contains(int value_to_find) {
+  std::shared_lock guard(some_mutex); // Shared reader access
+  return std::find(some_list.begin(),some_list.end(),value_to_find) != some_list.end();
+}
+```
+
+### Lock Ordering
+
+If you want to avoid deadlocks, you want to acquire locks in the same order!
+* Suppose thread 1 acquires lock A and then lock B
+* Suppose thread 2 acquires lock B and then lock A
+* There is a window where we could deadlock with thread 1 owning lock A and waiting for lock B while thread 2 owns lock B and is waiting for lock A forever
+
+The usual best practice is to document an order on your locks and always acquire them consistent with that order
+* See http://www.ddj.com/hpc-high-performance-computing/204801163
+* Tools like _ThreadSanitizer_ can also help find potential deadlocks and data races
+* https://clang.llvm.org/docs/ThreadSanitizer.html
+
+_Sometimes, it is hard to fix a lock order_
+* From http://www.justsoftwaresolutions.co.uk/threading/multithreadingin-c++0x-part-7-locking-multiple-mutexes.html
+```c++
+class account {
+  mutex m;
+  currency_value balance;
+  public:
+    friend void transfer(account& from,account& to, currency_value amount) {
+      lock_guard lock_from(from.m);
+      lock_guard lock_to(to.m);
+      from.balance -= amount;
+      to.balance += amount;
+    }
+  };
+```
+* If one thread transfers from account A to account B at the same time as another thread is transferring from account B to account A: Deadlock!
+
+### `std::scoped_lock`
+
+__`std::scoped_lock`__: allows you to acquire multiple locks “at the same time” and guarantees there will be no deadlock,
+* Like magic! (Actually, it will try releasing locks and then acquiring in different orders until no deadlock occurs)
+```c++
+class account {
+  mutex m;
+  currency_value balance;
+  public:
+    friend void transfer(account& from,account& to, currency_value amount) {
+      scoped_lock lck(from.m, to.m);
+      from.balance -= amount;
+      to.balance += amount;
+    }
+};
+```
+
+### Passing arguments to threads (`std::ref`, try/catch, `jthread`)
+
+You can add arguments to be passed to the new thread when you construct the `std::thread` object as in the next slide
+* But there are some surprising and important gotchas that make passing arguments to thread function different from passing arguments to ordinary functions
+```c++
+mutex io_mutex;
+
+void hello(string name) {
+  lock_guard<mutex> guard(io_mutex);
+  cout <<"Hello, " << name << endl;
+}
+
+int main(){ // No parens after thread function name:
+  vector<string> names = { "John", "Paul"};
+  vector<thread> threads;
+  for(auto name : names) {
+    threads.push_back(thread(hello, name));
+  }
+  for(auto it = threads.begin(), it != threads.end(); it++) {
+    it->join();
+  }
+}
+```
+A different notation is used from arbitrary function calls, but otherwise fairly straightforward looking:
+```c++
+void f(int i);
+f(7); // Ordinary call
+thread(f, 7);// f used as a thread function
+```
+
+__Gotcha: Signatures of thread functions silently “change” (`std::ref`)__
+
+_What does the following print?_
+```c++
+void f(int &i) {
+  i = 5;
+}
+
+int main() {
+  int i = 2;
+  std::thread t(f, i);
+  t.join();
+  cout << i << endl;
+  return 0;
+}
+// COMPILER ERROR!
+```
+Of course, 5 was intended
+* Unfortunately, thread arguments are not interpreted exactly the same way as just calling the thread function with the same arguments
+* This means that even an application programmer using threads needs to understand something subtle about templates
+* what went wrong?
+
+thread’s constructor looks like the following
+```c++
+struct thread { 
+  //...
+  template<typename func, typename... arg>
+  thread(func f, arg... a);
+  //...
+};
+
+// ...
+// Deduces thread::thread<void(*)(int&), int)
+std::thread t(f, i);
+...
+```
+Templates don’t know `f` takes its argument by reference
+* To do this, we will use the “__`std::ref`__” wrapper in `<functional>`
+```c++
+void f(int &i) {
+  i = 5;
+}
+
+int main() {
+  int i = 2;
+  std::thread t(f, std::ref(i));
+  t.join();
+  cout << i << endl;
+  return 0;
+}
+```
+
+__Gotcha: Passing references (`try/catch`, `jthread`)__
+* Be very careful about passing pointers or references to local variables into thread functions unless you are sure the local variables won’t go away during thread execution
+
+Example (based on Boehm)
+```c++
+void h(int &i);
+
+void f() {
+  int i;
+  thread t(h, ref(i));
+  bar(); // What if bar throws an exception?
+  t.join(); // This join is skipped
+} // h keeps running with a pointer
+// to a variable that no longer exists
+// Undefined (but certainly bad) behavior
+```
+slution: Use __`try/catch`__ or better yet, a _RAII_ class that joins like the __`jthread`__
+
+## Exceptions and RAII (`std::exception`)
+
+When something goes wrong, throw an exception
+* This ensures that errors are never inadvertently ignored
+* Can throw an exception (any type) with __`throw`__
+* But usually they should inherit from __`std::exception`__
+* You can catch an exception within a try block with __`catch`__.
+
+If you don’t catch the exception, it is passed to the caller and then the caller’s caller, etc. until it is caught
+* Simple example at https://godbolt.org/z/gJ97bS
+
+### Why do exceptions break explicit resource management?
+
+In the following example, the code to release resources is never called if `g()` throws an `exception`!
+```c++
+void f() {
+code_to_create_resources;
+g(); // May thrown an exception
+code_to_release_resources;
+}
+```
+* To solve this, we will need to understand the C++ object lifecycle
+* The payoff will be that C++ programmers generally spend very little time on memory management
+
+### RAII
+
+__RAII__: “Resource Acquisition is Initialization”. uses automatic duration objects to manage the lifetimes of dynamic duration resources
+* One of the most important idioms in C++
+* RAII uses automatic duration objects to manage the lifetimes of dynamic duration resources
+* RAII just means that we ensure that an automatic object’s destructor performs any needed cleanup
+
+Example
+* Remember, an object's destructor is always called at the end of its life
+* So the following code will call `x`'s destructor no matter how we leave `f`
+* Since `unique_ptr`'s destructor destroys the object it is managing and releases its memory, the following code will clean up the `X` that was created
+```c++
+void f() {
+auto x = make_unique<X>();
+g(); // No resource leak even if g throws; because x will delete X when it is deleted
+}
+```
+
+_What if we didn't want the X object deleted?_
+* Sometimes you want an object to outlive the RAII object that manages it
+* In that case, move ownership to another RAII object
+```c++
+unique_ptr<X> f() {
+  auto x = make_unique<X>();
+  g();
+  return move(x); // Transfer ownership to caller
+}
+
+void h() {
+  unique_ptr<X> h_x = f();
+  /* Use the X constructed in f(). It will
+  be destroyed by h_x's destructor when
+  h finishes */
+```
+* This is why nearly all RAII classes are movable
+
+### RAII Classes
+
+Just of the classes we know about (or will see today), `unique_ptr`, `shared_ptr`, `jthread`, `lock_guard`, `scoped_lock`, `unique_lock`, and `shared_lock` all use their destructor to release the object they manage
+* Let’s take a look at what can go wrong if we don’t use RAII classes 
+```c++
+std::list<int> some_list;
+std::shared_mutex some_mutex;
+
+void add_to_list(int new_value) {
+  some_mutex.lock();
+  some_list.push_back(new_value);
+  some_mutex.unlock();
+}
+
+bool list_contains(int value_to_find) {
+  some_mutex.shared_lock();
+  auto result = std::find(some_list.begin(),some_list.end(),value_to_find) != some_list.end();
+  some_mutex.shared_unlock();
+  return result;
+}
+```
+why is this worse?
+* _awkward_ (Minor reason)
+  * We can’t just return the result of `find`. We have to store it in a local variable, then release the lock, then return the local
+* _We could forget to unlock_ (Big reason)
+  * It is easy to get manual resource management wrong
+    * E.g., what if you added a return statement in an if in the middle of the function. It would be easy to forget to unlock 
+  * We’ve discussed this around unique_ptr, but it applies to locks and other resources as well
+
+__Huge resource management challenge: Exceptions__
+* Since an exception can disrupt the normal flow of control at almost any time, it may bypass our cleanup code
+* e.g. `vector::push_back` may throw a `bad_alloc` exception
+```c++
+std::list<int> some_list;
+std::shared_mutex some_mutex;
+
+void add_to_list(int new_value) {
+  some_mutex.lock();
+  some_list.push_back(new_value); // May throw bad_alloc exception
+  some_mutex.unlock(); // Oops! unlock() not called
+}
+
+bool list_contains(int value_to_find) {
+  some_mutex.shared_lock();
+  auto result = std::find(some_list.begin(),some_list.end(),value_to_find) != some_list.end();
+  some_mutex.shared_unlock();
+  return result;
+}
+```
+
+### RAII writing exception-safe code
+
+```c++
+void f() {
+  auto a = make_unique<A>();
+  // code_to_work_with_a;
+}
+```
+* The `A` object is guaranteed to have its destructor called and memory cleaned up even if an exception is thrown
+  * Because `a` doesn’t exist after we leave `f`
+  * So `a`’s destructor will be called when we leave `f` (however we leave `f`)
+  * `a` is a `unique_ptr<A>`, so its destructor cleans up the managed object
+* As a bonus, the code is simpler and less error-prone because we no longer need to write the `code_to_cleanup`
+
+solved!
+```c++
+std::list<int> some_list;
+std::shared_mutex some_mutex;
+
+void add_to_list(int new_value) {
+  std::unique_lock guard(some_mutex); // Will always be destroyed when we leave scope
+  some_list.push_back(new_value); // Even if an exception is thrown
+}
+
+bool list_contains(int value_to_find) {
+  std::shared_lock guard(some_mutex);
+  return std::find(some_list.begin(),some_list.end(),value_to_find) != some_list.end();
+}
+```
+
+__What if we want our object to outlive the automatic scope?__
+
+It might be that we want our dynamic object to be longer-lived than the `unique_ptr` or `unique_lock` or … that is managing it
+* Just transfer ownership to another RAII object
+  * `up2 = move(up);`
+  * This allows us to chain into new scopes while always maintaining an owner of the object
+
+### Locks example (Distributed Counter, `mutable`)
+
+Let’s explore concurrency best practices by looking at ways to implement a “distributed counter”
+* This is a counter that can be incremented or read by any thread
+* While this sounds like as simple of a problem as you can have in concurrency, we will see that it has a lot of complexity
+
+version1: `DistributedCounter1.h`
+* simply has a shared count protected by a mutex for incrementing and reading
+```c++
+#ifndef DISTRIBUTED_COUNTER_H
+#  define DISTRIBUTED_COUNTER_H
+// Implement a distributed counter with a thread local count in
+// conformance with cache-conscious programming best practices in
+// the lecture.
+//
+// Most of the complexity here is in managing the thread local counts
+// as threads are created or destroyed. Study how we use various
+// multithreading techniques to accurately and safely track these.
+
+#include<mutex>
+#include<shared_mutex>
+#include<map>
+#include<numeric>
+
+namespace mpcs {
+  class DistributedCounter {
+    
+    public:
+      typedef long long value_type;
+    
+    private:
+      value_type count;
+      std::shared_mutex mutable mtx;
+
+    public:
+	    DistributedCounter() : count(0) {}
+  
+      void operator++() {
+	      std::unique_lock lock(mtx);
+	      ++count;
+      }
+
+      void operator++(int) {
+	      std::unique_lock lock(mtx);
+	      count++;
+      }
+
+      value_type get() const {
+	      std::shared_lock lock(mtx);
+	    return count;
+      }
+  };
+}
+#endif
+```
+* We made `mtx` a `shared_mutex` field of `DistributedCounter` to keep different `DistributedCounter` objects from interfering with each other
+* You may have noticed the new word __`mutable`__ in the declaration: `shared_mutex mutable mtx;`
+
+__Logical constness__
+* We would like `DistributedCounter::get()` to be `const` because it seems illogical that reading the current value modifies the object
+* However, getting the reader lock will modify the state of the `mtx` member of the counter object
+* Since we don’t want consider changes to `mtx` to be changes to the state modeled by our counter, we label it __mutable__
+
+__`mutable`__: means that it can be modified even in `const` contexts
+
+This is simple, but very slow for two reasons
+* _Amdahl’s Law_: The more sequential tasks in a program, the less it benefits from parallelism. synchronization is happening all over (coarse-grained implementation).
+Because only one thread can increment the counter at a time, applications that increment the counter a cannot take advantage of parallelism very well by Amdahl’s Law
+* _Cache management_
+
+### Cache-conscious programming
+
+Cache effects
+* Accessing main memory can take a processors hundreds of cycles
+* Therefore, processors use high-speed caches to maintain local copies of data
+  * See https://www.researchgate.net/profile/Philip_Machanick/publication/280154268/figure/fig1/AS:614268508590082@1523464433037/A-typical-mass-market-multicore-designwith-shared-third-level-L3-cache-Levels-1-L1.png
+* If another processor needs to read/write that memory, it needs to force other processors to flush or invalidate any cached copies of the memory
+  * See http://en.wikipedia.org/wiki/Cache_coherency
+
+`DistributedCounter1.h`
+* Since every thread reads and writes the counter on every increment, caching is useless because each processor’s cached value might be out-of-date
+* When it modifies the counter, the computer’s cache coherence protocol tells all other cores to discard their cached counter value
+
+__Cache lines and false sharing__
+* `DistributedCounter2.h` attempts to fix this by hashing each thread to a different counter
+  * This gives some speedup
+  * But it is inconsistent and not as fast as we might hope
+  * Let’s understand what went wrong
+  * When data is moved from main memory to cache, enough data is always moved to fill a “__cache line__.”
+    * The size of a cache line varies by processor and needs to be looked up in the processor datasheet. A typical size would be 32 bytes, but it varies greatly.
+    * As a result, if two processors are modifying data within 32 bytes, they are constantly forcing each other to invalidate their cache (“__false sharing__”)
+
+`DistributedCounter2.h`
+* Even though it uses multiple subcounters, since they are stored in an array, many of them end up in the same cache line, which means updating a counter on one thread means that all of the other threads will have to reload their counters from main memory since they are in the same cache line
+  * This is very slow. Maybe 100x slower than accessing cache memory
+  * This kind of coupling of seemingly independent variables because they reside on the same cache line is known as __false sharing__
+
+```c++
+#ifndef DISTRIBUTED_COUNTER_H
+#  define DISTRIBUTED_COUNTER_H
+// Create multiple "sub-counters" so that different threads are unlikely
+// to use the same sub-counter, reducing contention compared to DistributedCounter1
+#include<atomic>
+#include<mutex>
+#include<shared_mutex>
+#include<map>
+#include<numeric>
+#include<utility>
+#include<vector>
+
+namespace mpcs {
+
+  class DistributedCounter {
+    typedef size_t value_type;
+
+    struct bucket {
+      std::shared_mutex sm;
+      value_type count;
+    };
+
+    static size_t const buckets{ 128 };
+    std::vector<bucket> counts{ buckets };
+
+    public:
+    
+      void operator++() {
+        size_t index = std::hash<std::thread::id>()(std::this_thread::get_id()) % buckets;
+        std::unique_lock ul(counts[index].sm);
+        counts[index].count++;
+      }
+
+      void operator++(int) {
+        ++*this;
+      }
+
+      value_type get() {
+        return std::accumulate(counts.begin(), counts.end(), (value_type)0, 
+        [](auto acc, auto &x) { std::shared_lock sl(x.sm); return acc + x.count; });
+      }
+  };
+}
+#endif
+```
+
+### Eliminate false sharing with padding
+
+In `DistributedCounter3`, we add some padding to the counters so they all are far enough apart to fall in distinct cache lines
+* On my dual socket workstation with 10 threads per CPU, the program gets ~15 times faster
+* but different machines give different behaviors
+  * On my laptop, the padding has no effect!
+  * Since my laptop only has one CPU socket, the impact of false sharing is much less than on my production server which has two CPU sockets that can only communicate via the motherboard and main memory
+  * If I had developed my code only on my development laptop, I would have unknowingly paid a 100% performance penalty
+  on my production server!
+  * This is why you have to follow best practices like putting independent objects on independent cache lines
+
+### Direct-Mapped Caches
+
+Often a single memory location can only be mapped to one or two possible cache lines
+* See https://courses.cs.washington.edu/courses/cse378/09wi/lectures/lec15.pdf
+* Not understanding direct-mapped caches can have dire consequences
+
+example:
+* The popular postscript rendering program ghostscript was originally written by Peter Deutsch, who wrote a custom memory manager. It is certainly true that malloc()/free() performance is critical in postscript and Peter Deutsch was a memory management expert, having coauthored the first high-performance Smalltalk implementation.
+* Peter Deutsch used a custom allocator that stored free pages stored in a linked list
+* Tests 10 years later showed that ghostscript’s memory manager was actually slowing postscript processing down by 30%
+* The custom allocator maintained a pool of freepages in a linked list, with the first word of each free page as a pointer to the next free page. As this code was developed on a machine without a directmapped cache, it ran fine. However, on machines with direct-mapped caches, all of the freelist pointers mapped to the same cache line causing a cache miss on each step of walking through the freelist. Ghostscript was spending about a third of its time in cache misses from walking through the page freelist.
+* Note: You don’t need to understand this as long as you understand the moral
+
+### Cache-conscious programming (advice!)
+
+_Cache-conscious programming (Adapted from Herlihy&Shavit p. 477_
+* Objects or fields that are accessed independently should be aligned and padded so they end up on different cache lines.
+* Keep read-only data separate from data that is modified frequently. 
+* When possible, split an object into thread-local pieces. For example, a counter used for statistics could be split into an array of counters, one per thread, each one residing on a different cache line. While a shared counter would cause invalidation traffic, the split counter allows each thread to update its own replica without causing cache coherence traffic.
+* If a lock protects data that is frequently modified, then keep the lock and the data on distinct cache lines, so that threads trying to acquire the lock do not interfere with the lock-holder’s access to the data.
+* If a lock protects data that is frequently uncontended, then try to keep the lock and the data on the same cache lines, so that acquiring the lock will also load some of the data into the cache.
+* If a class or struct contains a large chunk of data whose size is divisible by a high power of two, consider separating it out of the class and holding it with an `unique_ptr` to avoid the Ghostscript problem from the previous slide
+* Use a profiling tool like `VTune` to identify where your cache bottlenecks are
+
+### Portable cache-conscious programming (`std::hardware_destructive_interference_size`, `std::hardware_constructive_interference_size`)
+
+This week’s rules for cache-conscious programming had a lot of phrases like “put on same/different cache line”
+* How do we do that in C++?
+* We could make an educated guess, like we did with the padded counter
+  * However, such “magic numbers” are always brittle
+* C++17 introduces a portable approach 
+  * If you keep objects further than __`std::hardware_destructive_interference_size`__, they “should” (i.e., implementation-defined) end up on different cache lines
+  * If you keep objects closer than `std::hardware_constructive_interference_size`, they “should” end up on the same cache line
+
+# Lec 6
+
+## Low-Level Systems and Systems Programming
+
+### Pointers
+
+* __Pointers__ are a low-level way to refer to a (Typed) location in physical memory
+* For the most part, one should use references and higher-level lightweight abstractions like `unique_ptr`
+
+#### When do we need pointers?
+There are some cases not covered by our lightweight abstractions
+* a reference always refers to the same object but doesn't own it and cannot be "unbound"
+* a `unique_ptr` can change what object it manages, and can be unset (not managing any object), but always owns any object it manages
+
+1. __What if we want to be unsettable/rebindable but now own the object?__
+* oops! `observer_ptr` is a possible future solution https://en.cppreference.com/w/cpp/experimental/observer_ptr
+
+C++ forces pointers on you in a number of cases
+* `this` is a pointer
+  * Although it’s generally better to use the reference `*this`
+* `main(int argc, char **argv)` uses “pointers to pointers” to pass command line arguments
+
+2. Working with pointers makes sense in __Low-level programming__
+* C++ is a systems programming language
+* You may need to access memory directly
+  * e.g. a temperature sensor external to the program may write the current temperature into a
+    particular memory location, and your program needs to read the value at that know memory
+    location
+
+3. Advanced memory management
+* Nearly all memory management can be handled with `unique_ptr` and `shared_ptr`
+* But occasionally there are situations they don’t cover
+* _For example, managing the lifetime of nodes in a doubly linked list has shared ownership but using shared_ptr would be too inefficient_
+
+#### Basics
+
+Pointers to a type contain the address of an object of the given type.
+```c++
+A *ap = new A();
+```
+* `ap` is a pointer: it contains the address of an object of type `A` in memory
+* `new A()` constructs an object of type `A` in memory and returns its address
+* `new A()` has the same relation to `A*` as `make_unique<A>()` has to `unique_ptr<A>`
+
+__address-of operator `&`__: used to get the memory address of an object
+```c++
+// get the address of an object in memory
+A a;
+ap = &a; // & is the addressof operator
+```
+
+__dereference operator `*`__: used to get the object in memory using a memory address
+```c++
+// Dereference with *
+A a = *ap;
+```
+* `->` is an abbreviation for (`*_`)
+```c++
+ap->foo(); // Same as (*ap).foo()
+```
+* All of these should be familiar from `unique_ptr` (which intentionally provides a pointer-like interface)
+* __Warning__: Unlike `unique_ptr`, raw pointers do not have destructors and do not manage the lifetime of
+the object they point to. They simply store its address
+
+#### `nullptr`
+
+If a pointer is not pointing to any object, you should make sure it is `nullptr`
+```c++
+ap = nullptr; // don’t point at anything
+if(ap) { ap->foo(); } // foo won’t be called
+```
+* The type of `nullptr` is `nullptr_t`, which implicitly converts to any pointer type
+
+#### Accept no substitutes (do not set pointers to `0` or `NULL`)
+
+Old C/C++ code often uses `0` or the `NULL` macro to represent an empty pointer.
+* Don’t do this, as it breaks overloading 
+```c++
+int f(char *);
+int f(int);
+auto x = f(0); // Which f was meant?
+```
+Solution: Don’t ever use `0` or `NULL` for `nullptr`
+```c++
+auto x = f(0); // Calls f(int)
+auto x = f(nullptr); // Calls f(char *)
+```
+
+
+#### Pointer Arithmetic
+
+Arithmetic on pointers
+```c++
+// Arrays decay to a pointer to the 0th element
+A *aap = new A[10]; // creates an array. stores memory address in pointer 'aap'
+(*aap)[5] == *(aap + 5) // 5th elt of array
+```
+* It doesn’t add 5 to the address, but adds enough to get to the fifth element (starting from 0), taking into account the size of the object
+* Note: __you should avoid such low-level arrays__ whenever possible in favor of lightweight abstractions like __`std::array`__ and __`std::vector`__
+
+#### C Strings
+
+C-style string literals give you pointers
+* `"foo"` is actually a literal of type `char const[4]`; Sort of works
+```c++
+auto cp = "foo"; // c is a char const *
+cout << cp[1]; // prints o
+```
+* But obviously not nearly as powerful or typesafe as C++ strings, which have many methods, addition, etc.
+* __Using C++-string literals is a good habit__
+```c++
+auto s = "foo"s; // s is a std::string
+```
+
+#### `string_view`
+
+There are a lot of ways to express text in C++
+* `std::string`
+* C string (i.e., `char const *`)
+* A pointer and a length
+
+While it is possible to create a `std::string` from any of these, it can be clumsy and inefficient
+because all the character data will be copied 
+* what is a lightweight abstraction that can work with any version of text? __`string_view`__
+
+```c++
+void f(string const &);
+f(string(foo)); // OK
+f("foo"s); // OK. Same with user-defined literal
+f("foo"); // Has to copy text into string
+f({"foobar", 3}); // Has to copy text into string
+```
+*  Fine for short strings like this, but what if they were long?
+
+__`string_view`__: wraps a `char const *` and a length
+```c++
+void f(string_view);
+f(string(foo)); // OK. Views buffer
+f("foo"s); // OK.
+f("foo"); // OK. No more copying text
+f({"foobar", 3}); // OK. No more copying text
+```
+* The __hope is that functions that now take a `string const &` or a `const char *` will take a `string_view` instead__
+* __While it is easy to go from a `string` to a `string_view`, it can be hard to go the other way around__
+```c++
+string s("foo");
+string_view sv(s); // OK
+string s2(sv); // OK: string_view to string
+string s3 = sv; // Ill-formed!
+```
+* What went wrong? The string constructor used for `s3` is explicit, so it doesn’t generate an implicit type conversion
+* Is that bad? At first glance, that doesn’t sound so bad
+* If you need to initialize a string from a string_view, just use _direct initialization_ like `s2` rather than _copy initialization_ like s3
+
+* __Pointers__ are a low-level way to refer to a (Typed) location in physical memory
+* For the most part, one should use references and higher-level lightweight abstractions like `unique_ptr`
+* Unfortunately, __function arguments in C++ use copy initialization__
+```c++
+void f(string const &s);
+string_view sv("foo");
+f(sv); // Ill-formed! Copy initialization
+```
+* __Solution__: _`f` should take a `string_view`_
+
+#### Raw string literals
+
+* When you have a long string, is sometimes painful to constantly escape internal quotations and backslashes
+* Furthermore, a quoted string cannot extend across multiple lines (unless you put `\n` in) 
+* The point was to catch if you forgot to close your quotation marks
+
+C++ raw string literals
+* General form is `R"delim(text)delim“`
+* What is delim? Anything you want. Use it to avoid collisions
+```c++
+string s = R"foo(Hello
+(Raw String) Literals)foo";
+```
+* You can skip the delimiter if you don’t need it 
+```c++
+string code =
+R"(#include<iostream>
+using namespace std;
+int main()
+{
+cout << "Hello, world\n";
+})";
+```
+
+#### Pointers to Functions
+
+The basic idea is usually that you describe a type by how it is used
+```c++
+int *ip; // Means *ip is an int
+int (*fp)(int, int); // *fp can be called with 2 ints
+```
+Let’s show `fp` in action
+```c++
+int f(int i,int j) { 
+  //...
+}
+fp = &f;
+fp(2, 3);
+// The following line only works without captures
+fp = [](int i, int j) { return i + j; }
+```
+
+__What is the motivation of a Function pointer?__
+* _Sometimes we don’t know what function we want to call until runtime_
+```c++
+double mean(vector<double> const &) {...}
+double median(vector<double> const &) { ... }
+cout << "Should I use means or medians ";
+string answer;
+cin >> answer;
+double (*averager)(vector<double> const &) = (answer == "mean" ? mean : median);
+cout << "The average home price is ";
+cout << averager(getHomePrices()) << endl;
+```
+
+#### Pointers to Members (variables: `int A::*aip = &A::i`, functions: `void (A::*afp)(double) = &A::foo`)
+
+```c++
+struct A {
+  int i;
+  int j;
+  void foo(double);
+  void bar(double);
+};
+```
+* We would like to be able to point to a particular member of `A`
+* Not an address because we haven’t specified an `A` object
+* More like an offset into `A` objects
+* `int A::*aip = &A::i;`
+```c++
+void (A::*afp)(double) = &A::foo;
+A *ap = new A;
+A a;
+ap->*aip = 3; // Set ap->i to 3
+(a.*afp)(3.141592); // Calls a.foo(3.141592)
+```
+
+#### Pointers to Member Functions
+
+consider
+```c++
+vector<Animal *> zoo;
+zoo.push_back(new Elephant);
+zoo.push_back(new Zebra);
+zoo.push_back(new Bear);
+cout << "Feeding time (f) or Bedtime (b)?"
+char c;
+cin >> c;
+void (Animal::*ap)() = c == 'f' ? &Animal::eat : &Animal::sleep;
+for(auto animal : zoo) {
+  animal->*ap();
+}
+```
+
+#### Using `*()` notation with standard smart pointers
+
+> Note: `emplace_back` is a more efficient way to insert into a vector that allows you to put constructor arguments / invocation of a constructor. the object will be created and put into the vector on the spot. using `push_back` will: make a copy (construct), call move constructor, and then delete the previous copy object. emplace_black will just involve object construct. https://yasenh.github.io/post/cpp-diary-1-emplace_back/#:~:text=emplace_back%3A%20Inserts%20a%20new%20element,the%20arguments%20for%20its%20constructor.
+
+Unfortunately, `unique_ptr` and `shared_ptr` don’t overload `operator->*()`, so if we want to make the previous example delete
+objects when the zoo closes (or there is an exception when constructing an animal), we should modify it as shown below
+```c++
+vector<unique_ptr<Animal>> zoo;
+zoo.emplace_back(new Elephant);
+zoo.emplace_back(new Zebra);
+zoo.emplace_back(new Bear);
+cout << "Feeding time (f) or Bedtime (b)?"
+char c;
+cin >> c;
+void (Animal::*ap)()
+= c == 'f' ? &Animal::eat : &Animal::sleep;
+for (auto it = zoo.begin(); it != zoo.end(); it++) {
+((**it).*ap)(); // *it to get the "thing", which is a unique_ptr; *unique_ptr to get the object; hence, **it
+}
+```
+
+#### References
+
+Like pointers but different
+* Allow one object to be shared among different variables
+* __Can only be set on creation and never changed__
+* Reference members must be initialized in initializer lists
+```c++
+struct A {
+  A(int &i) : j(i) {}
+  A(int &i) { j = i; } // Ill-formed! (can't make an int& from another int&?)
+  int &j;
+};
+```
+* __references cannot be null__
+
+#### Not all callables can be assigned to a function pointer
+
+* __Can only assign a lambda to a function pointer if it does not have a capture list__
+  * See homework
+* __Can’t assign a functor to a function pointer__
+```c++
+struct WeightedMean {
+  WeightedMean(vector<double> const &weights) : weights(weights) {}
+
+  double operator()(vector<double> const &data) { 
+    return
+    inner_product(data.begin(), data.end(), weights.begin(), 0.0) / accumulate(weights.begin(), weights.end(), 0.0);
+  }
+
+  vector<double> weights;
+};
+
+WeightedMean wm({1.2, 3.4});
+wm(getHomePrices()); // Fine
+double (*averager)(vector<double> const &) = WeightedMean({1.5, 3.6, 4.2}); // Error!
+cout << "The average home price is ";
+cout << averager(getHomePrices()) << endl;
+```
+
+### `std::function`
+
+We have just discussed function pointers, but in C++, functions aren’t the only thing that can be called
+* function
+* lambda
+* functor
+* member function
+
+__`std::function` can hold anything callable__
+```c++
+struct WeightedMean {
+  WeightedMean(vector<double> const &weights): weights(weights) {}
+
+  double operator()(vector<double> const &data) {
+    return inner_product(data.begin(), data.end(),weights.begin(), 0.0) / accumulate(weights.begin(), weights.end(), 0.0);
+  }
+
+  vector<double> weights;
+};
+
+function<double(vector<double> const &)> averager = WeightedMean({1.5, 3.6, 4.2}); // OK
+cout << "The average home price is ";
+cout << averager(getHomePrices()) << endl;
+```
+
+#### You can even put a member pointer in a `std::function`
+
+It acts like a function whose first argument is the “`this”` pointer (or even a reference).
+```c++
+struct A {
+  int i;
+};
+
+function<int(A*)> fp = &A::i;
+A a;
+fp(&a);
+```
+
+#### Often you can choose between a `std::function` and a `template`
+
+In the below code, `tmpl_apply` and `fn_apply` can be used similarly
+```c++
+template<typename Callable>
+double tmpl_apply(Callable c, vector<double> const &data) {
+  return c(data);
+}
+
+double fn_apply(function<double(vector<double> const &)> c, vector<double> const &data) {
+  return c(data);
+}
+
+void f() {
+  tmpl_apply(mean, {1.7, 2.3}); // OK
+  fn_apply(mean, {1.7, 2.3}); // OK
+  tmpl_apply(WeightedMean({1.2, 3.4}), {1.7, 2.3}) // OK
+  fn_apply(WeightedMean({1.2, 3.4}), {1.7, 2.3}) // OK
+}
+```
+* See HW
+
+#### recap: How does unique_ptr work?
+Suppose we say
+```c++
+auto ap = make_unique<A>(1, 2);
+```
+* How does the object get created under the hood?
+* First, make_unique’s calls `new A(1,2)`
+* The compiler’s first step in this “new expression” is to allocate memory by calling `operator new(sizeof(A))`
+* Then it constructs an `A(1, 2)` object in the memory that was allocated
+
+#### operator `new`
+
+operator `new` is similar to malloc in C (in fact, it usually just calls malloc) in that it allocates the requested number of bytes of memory
+* For example, “`operator new(10)`” allocates 10 bytes of memory and returns a `void *` pointing to it
+* If the allocation fails (usually because there is not enough memory) it throws a `std::bad_alloc` exception
+
+#### Can I use operator overloading?
+
+Can I use operator overloading with `new`?
+* Yes! You can use C++ operator overloading to define your own `operator new`’s
+* You can redefine the one taking a `size_t` or you can create your own signatures 
+* In fact, the standard library defines a couple of useful overloads
+
+__Placement new__
+* Suppose you already have memory (e.g. a buffer) and you want to put an object in it
+* In this case, you don’t want to say “`new A`” because it will put the object someplace else
+* Fortunately, the standard library provides an overload that you can tell where you want it to put the object
+```c++
+void operator new(size_t s, void *p) { return p; }
+new(p) A; // The A object will be at location p
+```
+
+__Nothrow new__
+* Sometimes you don’t want new to throw an exception when allocation fails but return `nullptr` instead, similarly to C
+* Low latency applications like gaming and high-speed trading often want this
+* The standard library provides a non throwing overload
+```c++
+new(std::nothrow) A; // Won’t throw
+```
+* If you want this to apply throughout you entire program just overload the regular operator `new` to call that
+
+__Why avoid new?__
+The problem is that `new` returns an owning raw pointer which violates exception safety by not using RAII:
+```c++
+void f() {
+  // g(A *, A *) is responsible for deleting
+  g(new A(), new A());
+}
+```
+* What if the second time A’s constructor is called, an exception is thrown?
+* The first one will be leaked
+
+### `make_shared` and `make_unique`
+
+`make_shared<T>` and `make_unique<T>` create an object and return an owning pointer
+* The following two lines act the same
+```c++
+auto ap = make_shared<T>(4, 7);
+shared_ptr<T> ap = new T(4, 7);
+```
+
+* `make_unique` wasn’t added until C++14 (Oops); Now we can fix our previous example
+```c++
+void f() {
+  auto a1 = make_unique<A>(), a2 = make_unique<A>();
+  // g(A *, A *) is responsible for deleting
+  g(a1.release(), a2.release());
+}
+```
+
+_Effective Modern C++ Item 21_
+* __Prefer `std::make_unique` and `std::make_shared` to direct use of new__
+
+_Let’s improve it a little more_
+* If we can modify `g()`, we should really change it to take `unique_ptr<T>` arguments because otherwise, we would have an owning raw pointer
+* Remember, `g()` takes ownership, so it shouldn’t use owning raw pointers
+```c++
+g(unique_ptr<T>, unique_ptr<T>);
+```
+* Now we can call
+```c++
+g(make_unique<T>(), make_unique<T>());
+```
+* Interestingly, the following doesn’t work because ownership will no longer be unique
+```c++
+auto p1 = g(make_unique<T>();
+auto p2 = g(make_unique<T>();
+g(p1, p2); // Illegal! unique_ptr not copyable
+```
+* To fix, we need to move from p1 and p2
+```c++
+g(move(p1), move(p2)); // OK. unique_ptr is movable
+```
+* We'll learn about moving in detail next week
+
+_When are pointers needed?_
+* There are some cases not covered by out lightweight abstractions
+  * a reference always refers to the same 
+
+* note: get in the habit of using `string_view` for arguments for functions instead of `std::string const &`
+
+### Getting raw pointers from smart pointers
+
+Sometimes when you have a smart pointer, you need an actual pointer
+* For example, a function might need the address of an object but not participate in managing the object’s lifetime
+* __If you are not an owner of the object, there is no reason to use a smart pointer__
+```c++
+f(A *); // Doesn’t decide when to delete its argument
+auto a = make_unique<A>{};
+f(a.get()); // a.get() gives you the raw A *
+```
+* Sometimes you want to extend the lifetime of an object beyond the lifetime of the `unique_ptr`.
+```c++
+g(A*); // g will delete the argument when done
+auto a = make_unique<A>{};
+g(a.release()); // a no longer owns the object
+```
+
+### How to get rid of an object
+
+When you are done with an object, it needs to be destroyed and its memory released
+* __`delete`__ takes a raw pointer to an object, calls its destructor, and then releases its memory
+
+Using `operator delete()`
+```c++
+Animal *ap = new Elephant();
+ap->eat();
+delete ap; // Note: Missed if eat() throws an exception
+```
+
+## Atomics
+
+### Avoiding locks
+
+Whenever you have a lock, the critical section of code that it protects cannot be parallelized
+* Fortunately, C++ has another mechanism, __Atomics__, that can let you write multithreaded programs without locks
+
+### c++ atomics
+
+Sometimes you just want a variable that you can read and update from multiple threads
+* Using locks seems a little too complicated for that
+* Especially because x86 has a built-in atomic increment
+* Fortunately, C++ has a library of atomic types that can be shared between threads
+
+_An atomic counter_
+* You can read an atomic with its __`load()`__ method, write it with its __`store()`__ method and
+(usually) increment or decrement it with `++` or `--`
+* See `DistributedMethodCounter4` for an updated version our Distributed Counter that uses atomics
+
+### CASE STUDY ON THE RISKS AND REWARDS OF LOWLEVEL PROGRAMMING
+
+see lec 6 slides 
