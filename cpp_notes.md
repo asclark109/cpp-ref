@@ -8133,3 +8133,488 @@ _An atomic counter_
 ### CASE STUDY ON THE RISKS AND REWARDS OF LOWLEVEL PROGRAMMING
 
 see lec 6 slides 
+
+# Lec 7
+
+## Sleeping a thread
+
+Sometimes you want a thread to let a thread sleep for a period of time and then pick up its work
+* E.g., Aggregate statistics for a data structure every 30 seconds
+
+Traditional threading libraries like Win32 threads and pthreads have a sleep function. E.g., sleep(30)
+* But how long will that sleep? 30 milliseconds? 30 seconds? 30 minutes? Well, you could look at the documentation, but in practice, you’re not protected against errors, and people sometimes get it wrong
+
+Can we do better in C++?
+* The reason the traditional code is confusing is because it doesn’t take advantage of the type system
+  * Using an integer to represent time intervals gives you no protection against accidentally misinterpreting it as some other concept represented by an integer
+  * As we’ve seen before, stronger types will allow us to write more robust code
+  * C++ is good at creating strong types, defining type conversions to avoid boilerplate, and using templates to get rid of overhead
+
+### `std::chrono` – clocks 
+
+Clocks: Source of time information, providing
+* now – the current time `std::chrono::system_clock::now()`
+* type – what type of value represents the time (unsigned, long, etc.) `std::chrono::system_clock::time_point`
+* tick period – How often the clock ticks (If `std::chrono::system_clock::period` is `std::ratio<1, 100>`, it ticks 100 times per second)
+* accuracy – Is the tick period consistent or is it an average `std::chrono::system_clock::is_steady`
+
+### `std::chrono` – durations
+
+A duration is a length of time. To get a value out, cast to the type that you want, and then use count
+* `std::chrono::seconds(std::chrono::days(1)).count()` gives number of seconds in a day
+
+Unfortunately, the notation is cumbersome
+* `sleep(std::chrono::milliseconds(30)); // yuck`
+
+### `std::chrono` – time points
+
+__time points__: Points in time associated with a clock
+* You can add or subtract a duration from a time point to get a new time point
+* You can subtract one time point from another to get a duration provided the time points came from the same clock
+* To get the current time_point, use `std::chrono::system_clock::now()`
+
+## User-defined literals
+
+C++ allows you to use suffixes to specify literals for built-in types
+* `auto x = tuple(1, 2u, 3l); // int, unsigned, long`
+
+What about for classes?; Let’s consider why this is useful
+* User defined literals make it better
+
+C++ has user-defined literals that lets you use suffixes to build objects
+* To get 40 milliseconds, just say `40ms`. Likewise `1y + 2d + 3h + 7min + 5s + 2ms + 5us + 6ns` means 1 year, 2 days, 3 hours, 7 minutes, 5.002005006 seconds
+* Now it’s easy to make clear that I want to sleep 30 milliseconds `sleep(30ms);`
+
+### Sleeping a thread in C++
+
+Sleep for 30 seconds
+```c++
+std::this_thread::sleep_for(30s);
+```
+Clear we mean 30 seconds, not 30 ms or anything else
+* C++20, also gives easy creation of time points.
+```c++
+// Groundhog sleeps until noon on Groundhog Day
+this_thread::sleep_until(sys_days{February/2/2019} + 12h);
+```
+This shows how strong types can wrap the underlying number representing a duration or point in time in a safe and clear fashion with no loss in performance
+
+### String literals
+
+* What type is "hello, world"?
+* It is a C string literal, so it is actually of type `char const *`
+* Way too low level
+* We can sort-of get away with it because there is a conversion from C strings to C++ strings, but things often go wrong
+* We’ll see examples in a few slides
+* To get a C++ string literal, just put an `s` on the end
+* `"hello, world"s` has type string
+
+### How do I define my own literal?
+
+* What does a temperature of 7 mean? Fahrenheit, Celsius, Kelvin?
+
+Let’s write a temperature class
+```c++
+struct Temp { double degrees_K; };
+constexpr Temp operator"" _K(double d)
+{ return Temp{d}; }
+constexpr Temp operator"" _C(double d)
+{ return Temp{d + 273.15 }; }
+constexpr Temp operator"" _F(double d)
+{ return Temp{(d - 32)*5/9 + 273.15}; }
+static_assert(32_F == 0_C); // Units clear
+```
+Note: You can only write UDLs that begin with an underscore. Ones that don’t are reserved for the standard library
+
+## Inter-thread communication
+
+_Sometimes locks aren’t what you want_
+* Suppose we are trying to implement a “producer/consumer” design pattern. Think of this as a supply chain. Some threads produce work items that are consumed by other threads
+* Incredibly common in multi-threaded programs
+* Typically the producers put work onto a queue, and the consumers take them off
+* Locks can allow thread-safe access to the queue
+* But what happens if there is no work at the moment? The consumer thread needs to go to sleep and wake up when there is work to do
+* Rather than a lock, you’d like to wait for an “event” stating that the queue has become non-empty
+
+### Producer-consumer implementation
+
+We will use a couple of new library features
+* `unique_lock`,
+* a richer version of `lock_guard`
+* `condition_variable`
+* “wakes up” waiting threads
+
+### Condition variables
+
+* The C++ version of an event
+```c++
+condition_variable cv;
+```
+* You can wait for a condition variable to signal
+```c++
+mutex m;
+boolean test();
+unique_lock<mutex> lck(m);
+cv.wait(lck, test);
+```
+* If `the` test succeeds, the `wait` returns immediately, otherwise it unlocks `m` (that’s why we used a `unique_lock` instead of `lock_guard`)
+* Once the `condition_variable` signals the waiting thread (we’ll see how in a moment)
+  * The lock is reacquired
+  * The `test` is rerun (if it fails, we `wait` again); this protects against spurious wakeups
+  * Once the test succeeds, the program continues
+
+Signaling an event is simple
+* __`cv.notify_one();`__: Wakes one waiter (No guarantees which one)
+* __`cv.notify_all();`__: Wakes all waiters
+
+```c++
+// Producer-consumer from Williams’ C++ Concurrency in Action
+mutex m;
+queue<data_chunk> data_queue;
+condition_variable cond;
+
+void data_preparation_thread() {
+  while(more_data_to_prepare()) {
+    data_chunk const data=prepare_data();
+    lock_guard lk(m);
+    data_queue.push(data);
+    cond.notify_one();
+  }
+}
+
+void data_processing_thread() {
+  while(true) {
+    data_chunk data;
+    {
+    unique_lock<mutex> lk(m);
+    cond.wait(lk,[]{return !data_queue.empty();});
+    data=move(data_queue.front());
+    data_queue.pop();
+    }
+    process(data);
+    if(is_last_chunk(data))
+      break;
+  }
+}
+```
+
+### Async functions: Running functions in another thread
+
+It’s nice that we can pass arguments to a thread (like we do to functions), but how can we get the thread to return a value back?
+* Basically, we want to be able to use threads as “asynchronous functions” 
+```c++
+std::future<int> f = std::async(func_returning_int);
+```
+C++11 defines a `std::future` class template that lets a thread return a value sometime in the future when it’s calculation is complete
+* One way to create a future is with `std::async`
+* As soon as you create it, it starts running the function you passed it (usually) in a new thread
+* Call `get()` when you want to get the value produced by the function
+* `get()` will wait for the thread function to finish, then return the value
+
+### Introducing `promises` and `futures`
+
+Promises and futures let you pass values between threads; Kind of like a producer/consumer but you are just passing a single item, so you don’t need a queue
+* A __`promise`__ lets you pass a value from one thread to another; Create a paired future and promise
+```c++
+promise<int> p;
+future<int> fi = p.get_future();
+```
+* The producing thread stores the value in the promise
+```c++
+p.set_value(7);
+```
+* The consuming thread receives the value when it becomes available
+```c++
+cout << "received " << fi.get() << endl;
+```
+
+_`std::future` example_
+```c++
+// From Multithreading in C++0x Part 8
+#include <future>
+#include <iostream>
+
+int calculate_the_answer_to_LtUaE();
+
+void do_stuff();
+
+int main() {
+  // Run calculation in a different thread
+  std::future<int> the_answer = std::async(calculate_the_answer_to_LtUaE);
+  do_stuff();
+  std::cout <<"The answer to life, the universe and everything is " << the_answer.get() << std::endl;
+}
+```
+
+Can I check if the future has a value yet? Yep,
+```c++
+f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+```
+* Wow, that was ugly. Can we do better? Yes. Use a literal!
+```c++
+// better
+f.wait_for(0s) == std::future_status::ready;
+```
+__What if the asynchronous function throws an exception?__
+* If the thread function in an async throws an exception instead of returning a value, then calling `get()` will throw the exception, just like the asynchronous function was a real function
+
+### Introducing packaged tasks
+
+Well, async is good if you just want to run a function on a new thread to get a return value, but what if you want to asynchronously run a function on a specific existing thread, like a UI thread?
+* that is what a __`std::packaged_task`__ is for
+```c++
+// If I had said in one thread
+packaged_task<int(double)> pt{f};
+future<int> fi = pt.get_future();
+
+// Then I could run pt in any other thread
+pt(3.6); // And the value will become available in fi
+```
+
+### Parallel accumulate
+
+It would be really nice to have an implementation of `std::accumulate` that breaks up its input into pieces, adds up each piece in parallel and then adds up the results from each of the pieces
+* Let’s do this with futures `async_accumulate_function.h` (Implementation due to Anthony Williams)
+
+### Are futures an RAII class?
+
+In other words, does the destructor of a future join the thread if no one has called `get()` yet?
+```c++
+void f() {
+  auto result = async(g);
+  if(needResult())
+    auto val = result.get();
+  // If I didn’t need the result,
+  // will the return block until
+  // result’s destructor
+  // joins g’s thread?
+  return;
+}
+```
+1. __If you get a future from a promise, it is “nonblocking” (Destroying the future does not wait for the thread to complete)__
+2. __If you call async, it returns a “blocking future” (Its destructor will join the thread__
+
+This causes some surprising behavior
+```c++
+// The following code runs in parallel
+auto a = async(f);
+auto b = async(g);
+// The following code has no parallelism!
+async(f); // the future returned by async is generated as a temporary expression value, but its 
+async(g); // value is not stored in a variable so its destructor is immediately called, which blocks until it can join the thread
+```
+The point is that since the future returned from async is not stored anywhere, it will be destroyed after line 1, so it’s destructor will wait for f’s thread to complete running before it advances to the next line and launches g!
+* Confusing, yes. The committee agrees it is broken and will fix it in a future version of C++
+* No consensus yet on how
+* In the meantime, you don’t need to worry about any of this as long as you always call `get()` on a future sometime before destroying it (even if you don’t really need to)
+* This covers most use cases
+
+## C++23
+
+Large and small standards
+* We generally don't release two "feels like a new language" standards in a row
+* Big ones: C++98, C++11 and C++20
+* Small ones: C++03, C++14, C++17, C++23
+* But even the "small" ones have high-impact features
+* C++14: Generic lambdas: `[](auto x) { return x*x; }`
+* C++17: _CTAD_: `lock_guard lck(mutex);` _Fold Expressions_: `auto sum(auto const &...vs) { return (vs + ...); }`
+
+For C++23
+* For a broad writeup, see https://mariusbancila.ro/blog/2022/12/23/thecpp23-standard-break-down/
+* We're going to celebrate C++23 by digging into what I think will be a high impact feature __`std::expected`__
+* A new way to think about error handling
+* But first, let's dig a little deeper into exceptions
+
+### Exceptions have a pervasive impact on your code
+* As we've discussed, exceptions can cause clean-up code to be missed
+
+```c++
+void old_fashioned_f() {
+  X *x = new X("foo");
+  x->g(h());
+  delete x; // Oops! Skipped if g or h throws an exception
+}
+```
+* We learned how to fix this with RAII
+```c++
+void f() {
+  auto x = make_unique<X>("foo");
+  x->f(g()); // x cleaned up even if g or h throw an exception
+}
+```
+There are a number of other impacts that exceptions can have that you need to be aware of; Let’s look at a few
+
+### Exceptions and destructors
+
+* Recall that an object’s destructor is always called at the end of its lifetime
+* That means destructors of automatic duration objects are called during exception processing even though normal code is bypassed
+* This is what makes RAII work! But..What if a destructor throws during exception processing?
+
+```c++
+struct X { ~X() {throw "X";} };
+
+void f() {
+  auto x = make_unique<X>("foo");
+  x->f(g());
+}
+```
+* If `g` throws an exception, the x’s destructor will call X’s destructor, which will throw an exception in the middle of processing g’s exception
+* This makes no sense, so the language runtime will immediately call `std::terminate()`, abruptly halting your
+program. Oops
+
+__Best practice: Don’t throw exceptions from destructors__
+* To avoid this, don’t throw exceptions in your destructor
+* If your destructor calls something that may throw, be sure to catch before returning
+```c++
+struct X {
+  ~X() {
+    try {
+      g(*this); // g may throw
+    } catch(...) {} // Ignoring may be only option
+  }
+};
+```
+
+### Writing exception-safe interfaces
+* When you write a function or method, you should think about what happens if an exception occurs while passing arguments or return values
+* This only applies to pass-by-value arguments. Let’s look at a real-world example
+
+_Designing a stack interface_
+* In your HW, you were asked to write a stack based on a push to push a value and a pop to get the value back
+* As you are probably familiar with from stacks in other languages
+* You may be surprised to see that `std::stack` uses a different interface where `stack::pop()` returns a `void` (discarding the top element)
+* If you want to see the top element before you pop it into oblivion, `stack::top()` gives you a reference to it, so you can copy or move it to your preferred destination
+
+_Why does `std::stack` work this way? Exception-safety!_
+* Again, you would expect std::stack to be able to pop an object of a stack and return its value
+
+```c++
+stack<A> stk;
+// ...
+A a(stk.pop()); // Illegal!
+```
+The problem with this would be if A’s copy or move constructor threw an exception.
+* The top element could be lost forever
+* Instead, `stack::pop` has void return type.
+
+Do the following instead
+```c++
+stack<A> stk;
+// ...
+A a(stk.top());
+stk.pop();
+```
+
+_Can you really program if an exception can be thrown at any time?_
+* As we just saw, std::stack has a convoluted interface imposed on it by exception safety
+* In particular, this interface is bad in multi-threaded programs (why?)
+
+_Here’s an even worse example where not knowing if an exception can be thrown forces inefficient algorithms to be used_ \
+_How do we grow a vector?_
+* A vector stores a bunch of objects in a contiguous array it has reserved in memory
+* (Logically) it uses a `unique_ptr<int[]>` to manage the array
+* Suppose we call `push_back(2)` and there is no more room in the array
+  * vector will reserve a larger array. E.g, `make_unique<int[8]>()`
+  * I gave a little extra for future growth
+* and copy the ints over
+* In the example of a `vector<int>`, there is no need to move, but what if we have a vector of things that 
+  * Can’t be copied (`vector<unique_ptr<int>>`) 
+  * Or are expensive to copy but cheap to move (`vector<HTMLPage>`)
+  * We’d rather vector move the objects to their new location
+
+_Exceptions rear their ugly head_
+* What if an exception is thrown while moving one of the objects?
+* `push_back` will throw an exception, but it won’t be recoverable because neither the old array or the new array is usable
+* In fact, if push_back throws an exception, it is supposed to leave the vector untouched
+
+__If there is any chance a move throws, then we have to copy__
+* In the previous slide, we would have been better off copying than moving
+* But performance may be worse
+* And something like `vector<unique_ptr<T>>` would simply be impossible; This is, of course, unacceptable
+
+### `noexcept`
+
+All of these are symptoms of the fact that writing code that can tolerate an exception at any conceivable moment is a drag at best and disastrous at worse
+* While C++ does not have exception specifications like Java, you can label a function or method as __`noexcept`__, which means it will never throw an exception. If it tries, `std::terminate` will be called
+
+How vector decides whether to move or copy
+* If the type stored in it has a noexcept move constructor, then it moves it
+* If not, it copies
+* Since `unique_ptr`’s move constructor is annotated as `noexcept` (`unique_ptr(unique_ptr&& u) noexcept;`)
+* To make this easier, there is a type trait __`is_nothrow_move_constructible_v`__ that Concepts or SFINAE can leverage to call the right code
+
+### Wait, I thought C++ had exception specifications
+
+They used to
+* You would be able to list what exceptions a function could throw
+* While the concept might be workable
+* Java has made heavy use of exception specifications for years
+* The design was entirely broken, and it was never a good idea to use them
+* http://www.gotw.ca/publications/mill22.htm
+* So they were deprecated in C++11 and removed in C++17
+* Given C++’ emphasis on backwards compatibility, that should tell you everything you need to know about how terrible they were
+
+### Templates and `noexcept`
+
+Is our square template noexcept?
+
+```c++
+template<typename T>
+auto square(T &&x) {
+  return x*x;
+}
+```
+* It depends on whether T’s move constructor is noexcept
+* You can give noexcept a true or false argument to say so
+```c++
+template<typename T>
+auto square(T &&x)
+noexcept(is_nothrow_move_constructible_v<T>) {
+  return x*x;
+}
+```
+
+### `noexcept(noexcept(...))`
+
+Sometimes you don’t have a convenient type trait
+* There is also a “function” named __`noexcept()`__ that takes an expression and returns true if it is noexcept
+
+```c++
+template<typename T>
+auto square(T &&x)
+noexcept(noexcept(x*x)
+&& is_nothrow_move_constructible_v<T>) {
+  return x*x;
+}
+```
+* This is overkill for square but sometimes you need it
+* The keyword `noexcept` is used to mean a lot of things :(
+* We do this because introducing a new keyword can break existing code
+
+### `noexcept` and destructors
+* As we mentioned, your destructors should almost always be noexcept
+* In fact, whether you say so or not, your class destructors are implicitly noexcept
+* If you really mean for a destructor to be able throw an exception, you’ll have to explicitly say __`noexcept(false)`__
+
+### `noexcept` Best Practice
+
+* If your class’ move and copy constructors are `noexcept`, be sure to declare them that way
+* That will pay off every time you put them in a container
+* Passing by value will likely be safer and more efficient as well
+* Don’t try to declare everything with the correct `noexcept` specifier
+* That way madness lies
+* But don’t hesitate it if there is a specific benefit
+
+### There is a rethinking of error best practices
+
+* While exceptions have been the norm
+* We have seen that they are very complicated
+* Many important systems (e.g., computer games) have told their compiler to disable exceptions for performance or other reasons
+* The rest of the lecture will dig into this
+* This of course means they are not programming in C++
+* It also breaks much of the standard library
+* Game companies write their own exception-free versions of much of the standard library
+* But they do it anyway!
+* C++23 added a new way to handle errors: __`std::expected`__
+* Let's learn about it! (see accompanied lec 7 slides)
+
