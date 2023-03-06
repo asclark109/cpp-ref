@@ -8618,3 +8618,833 @@ noexcept(noexcept(x*x)
 * C++23 added a new way to handle errors: __`std::expected`__
 * Let's learn about it! (see accompanied lec 7 slides)
 
+# Lecture 8
+
+## Polymorphic Containers
+
+So far, our containers have only held objects of one type
+* The main lecture will be about object-oriented design
+* While object-orientation is all about polymorphism, all of the containers we have used hold objects of a single type
+* `vector<int>` holds only integers
+* `list<string>` holds strings
+* `map<string, int>` lets you look up the integer corresponding to a string (`m["foo"s] = 3;`)
+
+We can still use inheritance and virtual functions to put objects of different dynamic types in a container
+```c++
+vector<unique_ptr<Animal>> zoo;
+zoo.push_back(make_unique<Gorilla>());
+zoo.push_back(make_unique<Lobster>());
+```
+
+But there are times when you want different static types
+* C++ also includes data structures that can hold objects of different types
+* These will come in very handy when we dig into object-oriented design later this lecture
+
+## `pair` and `tuple`
+
+Two of the most useful templates in the C++ standard library are __`pair`__ and __`tuple`__
+* They are to classes what lambdas are to functions
+* Basically, they create an anonymous class on the fly
+
+## `Tuples`
+
+A tuple is an anonymous struct with fields of given types
+* You can think of tuples having the same relation to structs as lambdas do to functions
+* You can use `get<>` to access the fields
+
+```c++
+tuple<string, int, double> si("str", 2, 3.5);
+tuple di(2.5, 3, 'c');
+// CTAD: di will be a tuple<double,int, char>
+cout << get<0>(di) // prints 2.5
+cout << get<char>(di); // prints 'c'
+int three = get<1>(di);
+```
+
+## Returning multiple values
+
+One natural use for pair and tuple is to let functions return multiple values
+```c++
+pair<int, int> f() {
+  return {1, 2}; // ok
+}
+
+tuple<int, int, char> g() {
+  return {1, 2, 'u'}; // OK starting in C++17
+}
+```
+For more information on why it took until C++17 for the tuple example, see Improving Pair and Tuple (revision 1) by Daniel Krugler (Warning: Very advanced)
+* http://www.openstd.org/jtc1/sc22/wg21/docs/papers/2013/n3739.html
+
+## `Pairs`
+
+Pairs are like tuples that always have two types
+```c++
+pair<int, string> = { 1, "foo" };
+```
+* Only difference is members also have name
+* `p.first` is effectively a synonym for `get<0>(p)`
+* `p.second` is effectively a synonym for `get<1>(p)`
+* Note that `get` is zero-based (as it should be) while the field names starts at one
+
+_Why do we care about pairs if we have tuples?_
+* Now that there are tuples (C++11), there are no longer many reasons for you to use pairs (C++98)
+* However, you will run into them
+* For example, the element type of a `map` is a key value `pair`
+```c++
+map<int, string> m = {{1, "foo"}, {0, "bar"}};
+for(auto &kv: m) { // kv is a pair<int, string>
+cout << format("key: {}\tvalue: {}", p.first, get<1>(p);
+```
+
+## Structured Bindings
+
+__Structured binding__ are a feature that works very well with functions that return multiple values in a pair or a tuple
+
+Suppose you want to get several values back from a function
+* Use a `tuple` or a `pair` like we showed before
+
+But tuples are clumsy to work with. How do you get the values into individual variables where you want them after you’ve called the function?
+* The old way is to use __`std::tie`__
+```c++
+tuple<string, Rank, long> identity(Person);
+string name;
+Rank rank;
+tie(name, rank, std::ignore) = identity(Mike);
+```
+
+`tie` is a little bit clunky
+* It can only assign to existing variables
+* It doesn't deduce types
+* It can't decompose types other than tuple/pair
+* Can we improve?
+
+__C++17 structured bindings__ (Examples from cppreference)
+```c++
+//// EXAMPLE 1
+int a[2] = {1,2};
+auto [x,y] = a; // creates e[2], copies a into e, then x refers to e[0], y refers to e[1]
+auto& [xr, yr] = a; // xr refers to a[0], yr refers to a[1]
+
+//// EXAMPLE 2
+float x{}; char y{}; int z{};
+tuple<float&,char&&,int> tpl(x,std::move(y),z);
+const auto& [a,b,c] = tpl;
+// a names a structured binding of type float& that refers to x
+// b names a structured binding of type char&& that refers to y
+// c names a structured binding of type const int that refers to the 3rd element of tpl
+
+//// EXAMPLE 3
+struct S { int x1 : 2; volatile double y1; };
+S f();
+const auto [x, y] = f(); // x is a const int lvalue identifying the 2-bit bit field
+// y is a const volatile double lvalue
+```
+
+More realistic example: Suppose we have a function that returns either a web page or a network error code
+
+```c++
+pair<unique_ptr<Page>, int> getWebPage() {
+  /* … */
+  if(succeeded)
+    return { page, 0 };
+  else
+    return { unique_ptr<Page>, errCode };
+}
+/* ... */
+auto [ page, err] = getWebPage();
+if(!err) processPage(page)
+else if (err == 404) { cout << "Not found" << endl; }
+else { cout << format("Unknown error {}\n", err); }
+```
+
+## `std::optional`
+
+Sometimes it is useful for an object to be unset
+* E.g., like null in Java or None in Python
+* If you know about pointers, they can be null as well
+* That is where __`std::optional`__ comes in
+
+```c++
+// f may fail or return an int
+optional<int> f()
+  { return /* succeeded */ ? 1 : {} }
+
+auto r = f();
+
+if(r) { // f return a result
+  cout << "succeeded: " << r.value() << endl;
+} else {
+  cout << "failed" << endl;
+}
+```
+
+## Variants
+
+C++ has a lightweight "`variant`" abstraction that generalizes C unions
+* A `variant<A, B>` can hold an A or a B but not both 
+* These variants will be the basis of an approach to OO that will
+  * Often have much better performance than virtuals
+  * More dynamic than our `Animal` concept (we can have a zoo with runtime dispatch)
+  * Everything is value-based, no need to worry about references, `unique_ptr`, RAII, …
+  * Great support for Open-Closed extensibility
+
+Think of a variant is like a tuple, but instead of holding all of its fields at once, it only contains one of them at a time
+* Supports a very similar interface to tuples
+```c++
+variant<int, double> v = 3; // Holds int
+get<0>(v); // Returns 3
+get<1>(v); // Throws std::bad_variant_access
+v = 3.5; // Now holds a double
+get<double>(v); // Returns 3.5
+```
+You can also check what is in it
+```c++
+v.index; // returns 1
+holds_alternative<double>(v); // returns true
+holds_alternative<int>(v); // returns false
+```
+We will learn some more ways to access variants when we cover object-oriented design
+
+## OO design
+
+C++ offers many ways to address the sort of problems covered by OO design
+* Not all of these are considered "OO" techniques
+
+### Templates and OO can solve similar problems
+
+__Using templates instead of inheritance and virtuals__
+* OO and templates can be used for many of the same problems
+* In the spirit of Bjarne’s quote, new C++ features, like C++20 Concepts, were intentionally designed to be familiar for replacing object-oriented code
+
+Let’s review an example we looked at before
+```c++
+Consider the following OO code
+struct Animal {
+  virtual string name() = 0;
+  virtual string eats() = 0;
+};
+
+class Cat : public Animal {
+  string name() override { return "cat"; }
+  string eats() override { return "delicious mice"; }
+};
+
+// More animals...
+int main() {
+  unique_ptr<Animal> a = make_unique<Cat>();
+  cout << "A " << a->name() << " eats " << a->eats();
+}
+```
+Do we need to use OO? No
+```c++
+struct Cat {
+  string eats() { return "delicious mice"; }
+  string name() { return "cat";}
+};
+
+// More animals...
+int main() {
+  auto a = Cat();
+  cout << "A " << a.name() << " eats " << a.eats();
+}
+```
+Much simpler, but we lost the understanding that `a` is an `animal`
+* `a` could have the type House or int and we might not find out that something went wrong until much later when we did something that depends on a being an animal
+* What we need is a way to codify our expectations for a without all of the overhead and complexity of creating a base class
+
+### Concepts
+
+__Concepts__ play the analogous role for generic programming that base classes do in object oriented programming
+* A concept explains what operations a type supports
+* The following concept encapsulates the same info as the base class
+```c++
+template<typename T>
+concept Animal = requires(T a) {
+  { a.eats() } -> convertible_to<string>;
+  { a.name() } -> convertible_to<string>;
+};
+```
+
+Now, we can ensure that `a` represents an `animal`
+* With the above concept defined, we can specify that a must satisfy the `Animal` concept, and the compiler will not let us initialize it with a non-Animal type like House or int
+```c++
+int main() {
+  Animal auto a = Cat();
+  cout << "A " << a.name() << " eats " << a.eats();
+}
+```
+
+see https://godbolt.org/z/cWc6aM
+* As you can see, the definition of Cat and the client code in main() look very similar in both 
+* This follows a principle enunciated by Bjarne Stroustrup _"Generic Programming should just be Normal Programming"_
+
+__Usage is almost identical to before__
+```c++
+Animal auto a = Cat();
+cout << "A " << a.name() << " eats " << a.eats();
+```
+
+__How does this compare?__
+* Performance is better
+* Objects created on stack
+* No virtual dispatch
+* No inheritance
+* Makes it easier to adapt classes to our code without risking “spaghetti inheritance”
+
+On the other hand, it weakens type safety
+* Pacman is not an animal but eats and has a name
+* No runtime polymorphism
+* The following is legal if `Animal` is a class but not if it is a concept (Why?): `set<unique_ptr<Animal>> zoo;`
+
+### A real world example
+
+Suppose C++ didn’t have mutexes. It didn’t until C++11. How would we design them?
+* Let’s look at how Java does it. Java uses inheritance and virtual methods
+
+```c++
+// java style mutexes
+struct lockable {
+  virtual void lock() = 0;
+  virtual void unlock() = 0;
+};
+
+struct mutex: public lockable {
+  void lock() override;
+  void unlock() override;
+};
+
+struct lock_guard {
+  lock_guard(lockable &m) : m(m) { m.lock(); }
+  ~lock_guard() { m.unlock(); }
+  lockable &m;
+};
+
+// ...
+mutex m;
+void f() {
+  lock_guard lk(m);
+  // do stuff
+}
+```
+
+This is exactly how mutexes are used in C++, but that is not how mutexes work in c++:
+* _C++ mutexes do not inherit from a lockable base class_
+* The C++ committee decided to use templates instead of the virtual override approach taken by Java
+* Since mutexes are frequently used in performancecritical code, this was undoubtedly the right choice.
+
+```c++
+// c++ style mutexes
+struct mutex {
+  void lock();
+  void unlock();
+};
+
+template<typename T>
+struct lock_guard {
+  lock_guard(T &m) : m(m) { m.lock(); }
+  ~lock_guard() { m.unlock(); }
+  T &m;
+};
+
+// ...
+// Usage exactly the same as before!
+mutex m;
+void f() {
+  lock_guard lk(m);
+  // do stuff
+}
+```
+
+## Class Template Argument Deduction (CTAD)
+
+Note the following line depended on C++17 CTAD
+```c++
+lock_guard lk(m);
+```
+* CTAD infers the template arguments for `lock_guard<mutex>` from the constructor similarly to how Function Template Argument Deduction infers the template arguments for function templates
+* CTAD can often be useful in this way when using templates instead of virtuals. E.g., if `tp1` and `tp2` are of type `time_point<C, duration<R>>`
+```c++
+duration d = tp1 - tp2; // duration<R>
+```
+
+### so many choices... :/
+
+As we saw above, there is usually a choice between base classes/virtuals and templates/concepts
+* As we will see below, this is only the beginning
+* C++ supports many approaches for "objector ientation"
+* How can we make sense of this?
+* We will need an understanding of OO design best practices
+
+## SOLID
+
+* __S__ ingle Responsibility Principle
+* __O__ pen/Closed Principle
+* __L__ iskov Substitution Principle
+* __I__ nterface Segregation Principle
+* __D__ ependency Inversion Principle
+
+### Single Responsibility Principle
+
+How often do you see a class that has members organized into subsets?
+
+e.g. a `Camera` class that has subsets of data and methods together
+
+What if we wanted to use just one piece?
+* Can I pose (position) things other than a camera?
+* Does posing really have anything to do with resolution?
+* What if a camera supported multiple resolutions but only a single pose?
+* We can't do that with this class without breaking the Open-Closed principle
+* Which we'll learn about momentarily, but in this context it means "without breaking existing code"
+
+It is better to give e.g. `Image` its own class (<span style="color:blue">create additional classes (+)</span>)
+
+_It's not just classes that mix concerns_
+
+What about functions?
+* Many functions are thousands of lines long
+* E.g., https://github.com/llvm/llvmproject/blob/b07aab8fc1088ef66ecbe2befc3ef7e3936a390e/clang/lib/Parse/ParseExprCXX.cpp#L154
+```c++
+void myFunction(Quux q) {
+  // Locals
+  Pass p(1);
+  Bar b(p);
+  Blah l(q);
+  // Setup the frabulator
+  Frabulator f;
+  f.x();
+  f.y = "foo";
+  // Loop through the sneetches
+  for(auto s: f.sneetches)
+  // ...
+}
+```
+
+How can I break a function into single-concern pieces?
+* Breaking into several functions is typical
+* But is sometimes difficult to share state
+
+__option 1__: <span style="color:blue">create more, smaller functions (+)</span>
+```c++
+void myFunction(Quux q) {
+  // Locals
+  Pass p(1);
+  Bar b(p);
+  Blah l(q);
+  Frabulator f = setupFrabulator(b, p, l, q);
+  loopThroughSneetches(f, b, p, l, q);
+  // ...
+}
+```
+
+__option 2__: <span style="color:blue">Use a functor (+)</span>
+* Functions can be restructured as functors for better organization
+```c++
+struct myFunctionHelper {
+  myFunctionHelper(Quux q) : q(q), l(q) {}
+  Quux q;
+  Pass p(1);
+  Bar b(p);
+  Blah l;
+  // Methods now have access to variables
+  Frabulator setupFrabulator() { ... }
+  void loopThroughSneetches() { ... }
+  int operator() {
+  Frabulator f = setupFrabulator();
+  loopThroughSneetches(f);
+  // ...
+};
+
+int myFunction(Quux q) { return myFunctionHelper(q)(); }
+```
+* Good choice for really complex functions
+* Supports powerful features like virtual functions and multiple entry points
+* but high-friction for simpler cases
+
+__option 3__: <span style="color:blue">Use lambda with capture lists (+)</span>
+* While C++ doesn't have local functions per se, you can get the same organizing effect with local lambdas
+```c++
+int myFunction(Quux q) {
+  Pass p(1);
+  Bar b(p);
+  Blah l;
+  auto setupFrabulator = [&] { ... }
+  auto loopThroughSneetches = [&](Frabulator f) { ... }
+  Frabulator f = setupFrabulator();
+  loopThroughSneetches(f);
+  //...
+};
+```
+* Good for "goldilocks" cases where a class is overkill but multiple responsibilities risk a "spaghetti" function
+
+### Open/Closed Principle
+
+__Software constructs should be open for extension but closed for modification__
+* Open for extension (Allows the addition of new capabilities over time)
+* Closed for modification (Don't break existing client code)
+
+__Inheritance and virtuals__
+* Of course, inheritance and virtual functions are a great way to extend classes
+* As are the template equivalents we discussed above
+* Is it enough? Not quite. It does not cover extremely common usecases for extensions
+
+The Problem: __Client-side extension__
+* Suppose you are using a class hierarchy, and you wish the classes had a virtual method specific to the needs of your application
+* Unfortunately, it probably doesn't because the class designer doesn’t understand your application
+* You may not be able to add them
+* Maybe they’re not your classes
+* Maybe the virtuals you want only apply to your particular program, and it breaks encapsulation to clutter up a general interface with the particulars of every app that uses them
+
+The <span style="color:blue">Visitor Pattern (+)</span>.
+* The Visitor Pattern is a way to make your class hierarchies extensible
+* Suppose, as a user of the `Animal` class, I wished that it had a `lifespan()` method, but the class designer did not provide one
+* We will fix that with the visitor pattern
+
+__Make your classes extensible:__
+* __Class Creator__: Create a visitor class that can be overriden
+```c++
+struct AnimalVisitor {
+  virtual void visit(Cat &) const = 0;
+  virtual void visit(Dog &) const = 0;
+};
+```
+
+* Add an “`accept`” method to each class in the hierarchy 
+```c++
+struct Animal {
+  virtual void accept(AnimalVisitor const &v) = 0;
+};
+
+struct Cat : public Animal {
+  virtual void accept(AnimalVisitor const &v) { 
+    v.visit(*this);
+  }
+  /* … */
+};
+```
+__Class User__: Create a visitor
+* Now, I create a visitor that implements the methods I wish were there
+```c++
+struct LifeSpanVisitor : public AnimalVisitor {
+  LifeSpanVisitor(int &i) : i(i) {}
+  void visit(Dog &) const { i = 10; }
+  void visit(Cat &) const { i = 12; }
+  int &i;
+};
+```
+
+__Using the visitor__
+* Now, I can get the lifespan of the `Animal` a I created above
+```c++
+int years;
+a->accept(LifeSpanVisitor(years));
+cout << "lives " << years;
+```
+* https://godbolt.org/z/WbGe4z
+
+__Best practice__: <span style="color:blue">If you are designing a class hierarchy where the best interface is unclear, add an __`accept()`__ method as a customization point (+)</span>
+
+## Using Duck-typed `variants` for performant, extensible oo
+
+Inheritance models “__isA__”
+* As we’ve mentioned, inheritance is a model of the “isA” concept
+* __Duck typing__ gives a different notion of “isA”
+  * If a class has a `walk()` method and a `quack()` method, let’s not worry about inheritance and call it a `duck`
+
+__Templates use duck typing__
+```c++
+T square(auto x) { return x*x; }
+square(5); // OK
+// We don’t require that the type of x inherits from a HasMultiplication class, simply that operator* makes sense to use here
+```
+
+__Concepts__
+* C++20 Concepts improve duck typing
+* We could have a HasMultiplication concept that would do the trick without requiring any complex inheritance hierarchies
+
+__Dynamic dispatch__
+* While C++ templates have always been duck typed, templates are used for compile-time dispatch
+* By contrast, OO is used for __dynamic dispatch__
+* Because duck typing is flexible and forgiving while remaining statically typesafe, people have asked whether we could use dynamically-dispatched duck typing as an alternative to inheritance
+
+### Using Duck-Typed Variants in place of OO (`variant`, `std::visit`)
+
+* Suppose we knew (at compile-time) all of the Animal classes (e.g., `Cat` and `Dog`)
+* However, we don’t know the type of a particular animal until run-time
+* Instead of inheriting from an abstract animal base class, we can have an animal `variant`
+```c++
+using Animal = variant<Cat, Dog>;
+```
+
+__How do I call a method on a variant?__
+* While variant<Cat, Dog> is a great way to store either a `Cat` or a `Dog`
+* How can I simulate virtual functions and call the right `name()` method for the type it is holding?
+
+__`std::visit`__ (C++ standard library solution)
+* Warning: Do not confuse with the Visitor Pattern we discussed earlier
+* If v is a variant, and c is a callable, visit(v, c) calls c with whatever is stored in v as its argument
+
+Does this solve our problem of making variants behave like virtuals? Let’s see
+
+Dynamically calling our `Animal`’s `name()` method
+```c++
+Animal a = Cat(); // a is a cat
+cout << visit([](auto &x) { x.name(); },a);
+// Prints “Cat”, just like we want
+```
+How does it compare to using virtuals or templates? In some ways, it’s the best of both worlds
+* Almost as fast as templates
+* Since `Animal` is a single type that can hold a `Cat` or a `Dog`, we can just use animals by value instead of having to do memory allocations
+* As dynamic as traditional OO
+* A `set<Animal>` works great
+* Unlike our Concepts version
+
+### Malleable (mallard?) typing
+
+Virtual functions need to exactly match what they override, so we couldn’t, say, give `Cat`’s `eat()` a defaulted argument
+```c++
+struct Cat : public Animal {
+  void eat(string prey = "mouse") override; // ill-formed
+}
+```
+With variants, that is not a problem
+* As long as `eats()` is callable, we don’t care about the rest
+```c++
+struct Cat {
+  void eat(string prey = "mouse");
+};
+
+visit([](auto &x) { x.eats(); }, a); // OK. Eats a mouse
+```
+
+__Users can add methods__
+* Just like we discussed with the Visitor Pattern, users of the Animal type can add their own methods
+* To do this, we will use the __“overloaded pattern__”
+
+### The overloaded pattern
+
+* Define an overloaded class (you only need to do this once)
+```c++
+template<class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+```
+* This inherits the function call operator of everything it is constructed with
+* Let’s make this clear by creating a lifeSpan() “method” like we did before
+```c++
+overloaded lifeSpan([](Cat &) { return 12 }, [](Dog &) { return 10});
+// Get life span without knowing whether
+// a is a Cat or a Dog
+cout << visit(lifeSpan, a); // Prints 12
+```
+Note that this idiom relies on CTAD and aggregates deducing the template arguments for you
+
+## Problems with Duck Typing
+
+* <span style="color:red">duck typing notation is much uglier (-)</span> than calling a virtual function
+* While the flexibility is nice, duck typing <span style="color:red">duck typing reduces type safety (-)</span>
+* It cannot tell that a `Shape`’s `draw()` method for drawing a picture is different than a `Cowboy`’s `draw()` method for drawing a gun
+* Variants always uses as much space as the biggest type (<span style="color:red">space (-)</span>)
+* Whenever we create a new kind of Animal, we have to add it to the variant, which can create <span style="color:red">maintenance problems (-)</span>
+
+## Duck Typing Best Practice
+
+Because it is ugly and not well-known, only prefer variant-based polymorphism over virtuals or templates when there is a clear benefit
+* In practice, I use it a lot, but less than I do virtual functions or templates
+
+## Liskov Substitution Principle
+Subtype Requirement: _Let Φ (x) be a property provable about objects x of type T. Then Φ (y) should be true for objects y of type S where S is a subtype of T_
+
+### Inheritance models "isA"
+
+* Inheritance is one way of modeling subtyping
+* A Deer isA Animal
+* One would expect that anything that is true
+about animals is true about deer
+
+### Concepts model isA
+* If Animal is a concept instead of a base class, we have seen that the same is true
+* One other benefit of concepts is that inheritance only inherits methods, but concepts can specify almost arbitrary Φ (x) properties
+* Tradeoff: Efficiency vs dynamism (Generally how to choose the approach)
+
+## Interface Segregation Principle
+
+No code should be forced to depend on methods it doesn't use
+* (Martin) Suppose we have a fat "Job" class that has a bunch of methods that are only relevant to print jobs and other methods that are only relevant to stapling jobs
+* If the stapling code takes a Job, it will needlessly only work with Jobs that also know about printing
+
+__Handling with OO__
+* This is often given as a motivation for using <span style="color:blue">abstract base classes (interfaces) (+)</span>
+* The concrete Job class implements the `PrintJob` and `StapleJob` interfaces
+* This can be taken so far, getting into spaghetti inheritance and excessive multiple inheritance complexity
+
+<span style="color:blue">Concepts also handle this nicely (+)</span>
+* The stapling code can only require what it needs to staple without exploding the type hierarchy
+* However, you could also go too far with this too as an incoherent set of functions that each make different requirements of each job that is passed in
+* Both of these are good reminders that architecture is more art than science
+
+## Dependency Inversion Principle
+This is sometimes paraphrased as "All programming problems can be solved with an extra layer of indirection"
+
+_“the most flexible systems are those in which source code dependencies refer only to abstractions, not to concretions”_
+
+Suppose you have a thumbnail service class that looks for pictures in S3 folders
+```c++
+class ThumbnailService {
+  S3Folder inputFolder;
+  // …
+};
+```
+* `ThumbnailService` is now coupled with the concrete S3 service instead of an abstract idea of a storage service, which is probably sufficient for this use
+* Again, the indirection can be introduced either through inheritance/virtuals or template/concepts
+* Usual performance/dynamism tradeoff
+
+### Solving with inheritance and virtuals
+
+```c++
+Class S3Folder : public Folder {
+  // … 
+};
+
+class ThumbnailService {
+  ThumbnailService(Folder &inputFolder) : inputFolder(inputFolder) {}
+  Folder &inputFolder;
+  // …
+};
+```
+
+### Solving with templates and concepts
+```c++
+template<Folder F> // Folder is a concept
+class ThumbnailService {
+  Folder &inputFolder;
+  // …
+};
+
+ThumbnailService<S3Folder> ts;
+ThumbnailService ts2(myS3Folder); // CTAD
+```
+
+## Type Erasure
+
+One would often like to use templates as described in this lecture to work with different types
+* _But your use case needs actual classes rather than templates_
+* We've already discussed wanting a fixed type to put in a vector
+
+We'll see some more examples below. __Type erasure__ allows you to store a variety of types in a (non-template) class
+
+__Examples__
+
+__`std::any`__
+* Uses type erasure to store anything at any time
+* Use `any_cast` to get the value out
+  * `bad_any_cast` exception if you try to take out a different type
+```c++
+any a = 7;
+cout << any_cast<int>(a);
+a = "foo"s;
+cout << any_cast<string>(a);
+```
+
+__`std::function`__
+* We have discussed how `std::function<int(double)>` can contain any callable (function, functor, lambda,…) that accepts a double and returns an int
+* How can it store something of variable type? By erasing the type
+
+### Class, Concept, and Model (Rob Douglas)
+
+There are three parts to Type Erasure
+* The __class__
+* The __concept__
+* The __model__
+
+### the Class
+
+This is the non-template class you want to be able to hold various types
+* Typically it does have a constructor template or a template assignment operator to let you store various types in it
+```c++
+struct Erased {
+  template<typename T> Erased(T&&);
+  template<typename T>
+  Erased& operator=(T&&);
+};
+```
+
+### the Concept
+
+You might not want to store arbitrary types
+* The concept explains what interface you want to support
+* Similar (but not identical) to C++20 concepts
+* Declare a nested Concept class with a pure virtual interface
+```c++
+struct Erased {
+  template<typename T> Erased(T&&);
+  template<typename T>
+  Erased& operator=(T&&);
+  
+  struct Concept { virtual void foo() = 0; }; // new
+};
+```
+
+### the model
+
+Class template that stores the actual object (of unknown type) and delegates calls
+```c++
+struct Erased { // class
+  template<typename T> Erased(T&&);
+  template<typename T>
+  Erased& operator=(T&&);
+
+  struct Concept { virtual void foo() = 0; }; // concept
+
+  template<typename T>  // model
+  struct Model : Concept {
+    T val;
+    Model(T&& val) : val(val) {}
+    void foo() override { val.foo(); }
+  };
+};
+```
+
+### store and access the type-erased field
+
+```c++
+struct Erased {
+  template<typename T>
+  Erased(T&& t) : valp(make_unique<Model<T>>(t)) { // store and access the type-erased field
+
+  }
+  
+  template<typename T>
+  Erased& operator=(T&& t) { 
+    val = make_unique<Model<T>>(t);  // store and access the type-erased field
+  }
+
+  struct Concept { virtual void foo() = 0; };
+
+  template<typename T>
+  struct Model : Concept {
+    T val;
+    Model(T&& val) : val(val) {}
+    void foo() override { val.foo(); }
+  };
+
+  void foo() { val->foo(); } // store and access the type-erased field
+  unique_ptr<Concept> val;   // store and access the type-erased field
+};
+```
+
+### Usage
+
+Let's use it
+```c++
+  struct A { void foo(); };
+  struct B { void foo(); };
+
+int main() {
+  Erased e(A());
+  e.foo(); // Calls A's foo
+  e = B();
+  e.foo(); // Calls B's foo
+}
+```
+
+Note: This works even though `A::foo` and `B::foo` are not virtual (the virtualness is in the Model and the Concept)
