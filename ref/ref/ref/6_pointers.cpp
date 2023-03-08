@@ -37,9 +37,9 @@ void exDereference(){
 // the object they point to. They simply store its
 // address
 
-////////////
+//////////////////////////////////
 // nullptr
-////////////
+//////////////////////////////////
 // If a pointer is not pointing to any object, you should
 // make sure it is nullptr
 
