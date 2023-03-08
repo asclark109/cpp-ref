@@ -20,12 +20,13 @@ struct A {
     int i;
 };
 
-//////////////////
+//////////////////////////////////////////
 // “Constructors” for fundamental types
-//////////////////
+//////////////////////////////////////////
 // since fundamental types don’t have constructors, creating one without an
 // initializer gives you garbage values
 int i; // i could be anything
+
 // Reading uninitialized memory like this is a common source of bugs
 // If you explicitly pass it zero constructor arguments, the memory is zero-initialized
 int i{}; // i is 0  BETTER

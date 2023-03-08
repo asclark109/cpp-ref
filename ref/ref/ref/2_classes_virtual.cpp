@@ -6,9 +6,10 @@
 #include<vector>
 #include<memory>
 
-
+//////////////////////////////////////////////////
 // VIRTUAL METHOD:      uses the dynamic type
 // NON-VIRTUAL METHOD:  uses the static type
+//////////////////////////////////////////////////
 
 struct Animal {
     void f() { std::cout << "animal f"; }

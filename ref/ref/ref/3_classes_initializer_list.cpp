@@ -5,6 +5,11 @@
 // #include<iostream>
 // #include<vector>
 
+//////////////////////
+// INITIALIZER_LIST
+//////////////////////
+// allows variadic number of parameters to be passed into function
+
 #include<initializer_list>
 using std::initializer_list;
 

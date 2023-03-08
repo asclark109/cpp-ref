@@ -16,6 +16,12 @@ auto square(auto x) {
 int i = square(21); // 441
 double d = square(2.1); // 4.41
 
+// FUNCTION TEMPLATES (PRE C++20)
+template<typename T>
+auto square2(T n) {
+    return n*n;
+}
+
 void exFUNCTION_TEMPLATES() {
 
 };

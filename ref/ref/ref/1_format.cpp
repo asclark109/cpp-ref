@@ -1,5 +1,7 @@
-// #ifndef EXFORMAT_H
-// #  define EXFORMAT_H
+#ifndef EXFORMAT_H
+#  define EXFORMAT_H
+
+// ONLY IN C++20
 
 // #include<format>
 // #include<string>
@@ -12,4 +14,4 @@
 // 	std::cout << std::format("Hello, {}!\n", name);
 // }
 
-// #endif
+#endif

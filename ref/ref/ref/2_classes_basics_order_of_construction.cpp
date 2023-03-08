@@ -25,8 +25,4 @@ public:
 // (x is initialized first, because it was declared first.
 // Order in constructor initializer list doesn’t matter)
 
-void exCLASSES_CONSTRUCTORS() {
-    
-}
-
 #endif

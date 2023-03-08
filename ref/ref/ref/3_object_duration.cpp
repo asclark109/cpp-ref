@@ -108,7 +108,9 @@ void g() {
     static A a3; // Created first time g() is called
 }
 
+//////////////////////////////
 // FUNCTION-STATIC LIFETIMES
+//////////////////////////////
 // A static variable in a function is initialized the first time the function runs
 // -- Even if the function is called from multiple threads, the language
 //    is responsible for making sure it gets initialized exactly once.

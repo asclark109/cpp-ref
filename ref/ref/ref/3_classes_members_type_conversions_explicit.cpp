@@ -35,9 +35,9 @@
 void exCLASS_MEMBERS_TYPE_CONVERSIONS_EXPLICIT(){
     float f = 3.5;
 
-    //////////////////
+    //////////////////////////////////////////////////////////////////////////
     // STATIC CAST: may still lead to truncation but more safe than c-style cast
-    //////////////////
+    //////////////////////////////////////////////////////////////////////////
     int b = static_cast<int>(f);
     // It is a compile time cast. It does things like implicit conversions 
     // between types (such as int to float, or pointer to void*), and it can
@@ -84,9 +84,9 @@ void exCLASS_MEMBERS_TYPE_CONVERSIONS_EXPLICIT(){
     if (bp == nullptr)
         std::cout << "null" << std::endl;
 
-    //////////////////
+    //////////////////////
     // REINTERPRET_CAST
-    //////////////////
+    //////////////////////
     int* p = new int(65);
     char* ch = reinterpret_cast<char*>(p);
     // reinterpret_cast is a very special and dangerous type of

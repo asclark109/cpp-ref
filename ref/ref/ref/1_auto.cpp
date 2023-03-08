@@ -17,11 +17,8 @@ auto square(double n) {
 
 // The type "auto" means the compiler should perform type inferencing
 void exPreprocessor() {
-	std::cout << square(2) + square(3.1416);
-
-	/*
-
-	*/
+	auto result1 = square(2);
+	auto result2 = square(2.2);
 }
 
 #endif

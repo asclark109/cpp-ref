@@ -12,13 +12,13 @@ struct A {
     }
 };
 
-//////////////////
+//////////////////////////////////////
 // DESTRUCTOR (Implicitly-generated)
-//////////////////
+//////////////////////////////////////
 
 // If you don’t write one, the compiler will generate
 // it for you, called the default destructor
-//  This will simply destroy all of the fields and base
+// This will simply destroy all of the fields and base
 // classes in the reverse of the order we gave for
 // constructing them
 

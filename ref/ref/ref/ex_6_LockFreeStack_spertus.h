@@ -1,13 +1,10 @@
-////////////
-// SPERTUS
-////////////
 #ifndef LOCK_FREE_STACK_H
 #  define LOCK_FREE_STACK_H
 #include<atomic>
 #include<memory>
 using std::atomic;
 
-namespace mpcs51044 {
+namespace cspp51044 {
 // Linked list of integers
 struct StackItem {
   StackItem(int val) : next(0), value(val) {}
@@ -63,7 +60,14 @@ Stack::pop()
 void
 Stack::push(int val)
 {
-    /* Homework */
+  StackHead expected = head.load();
+  StackItem *newItem = new StackItem(val);
+  StackHead newHead;
+  newHead.link = newItem;
+  do {
+    newItem->next = expected.link;
+    newHead.count = expected.count + 1;
+  } while(!head.compare_exchange_weak(expected, newHead));
 }
 }
 #endif
