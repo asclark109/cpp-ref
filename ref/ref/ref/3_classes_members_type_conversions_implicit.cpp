@@ -4,10 +4,11 @@
 #include <memory>
 #include <string>
 
+namespace ns_type_conversions {
+
 // note: the `explicit` keyword prevents creation of a type conversion operation
 
 //// IMPLICIT TYPE CONVERSIONS
-
 //////////////////
 // BUILT-IN TYPE CONVERSION
 //////////////////
@@ -19,8 +20,12 @@ char c = i; // No warning, but dangerous!
 //////////////////
 // POLYMORPHISM TYPE CONVERSION
 //////////////////
-// std::unique_ptr<Animal> ap = std::make_unique<Dog>("Champ");
-// void f(Dog &dr) { Animal &ar = dr; }
+using std::unique_ptr;
+using std::make_unique;
+struct Animal{};
+struct Dog : public Animal {};
+unique_ptr<Animal> ap = make_unique<Dog>();
+void f(Dog &dr) { Animal &ar = dr; }
 
 //////////////////
 // USER-DEFINED CONSTRUCTORS
@@ -63,5 +68,6 @@ A a = 7;
 // (type conversion leading to int, and then
 //  int converted to A)
 
+}
 
 #endif

@@ -21,8 +21,9 @@
 // to discard their cached counter value
 
 ////////////////////////////////////////////////////////////////////
-// IMPROVE COARSE-GRAINED IMPL (LESSEN CONTENTION) SEPARATE THE DATA STRUCTURE
-// INTO SECTIONS SO THAT EACH THREAD HAS ITS OWN SECTION TO MANIPULATE
+// IMPROVE COARSE-GRAINED IMPL (LESSEN CONTENTION):
+// SEPARATE THE DATA STRUCTURE INTO SECTIONS SO THAT EACH 
+// THREAD HAS ITS OWN SECTION TO MANIPULATE
 ////////////////////////////////////////////////////////////////////
 
 // DistributedCounter2 attempts to fix this by hashing each
@@ -147,7 +148,6 @@ namespace mpcs {
 	};
 }
 
-
 ////////////////////////
 // PORTABLE PADDING
 ////////////////////////
@@ -156,3 +156,33 @@ namespace mpcs {
 // they “should” (i.e., implementation-defined) end up on different cache lines
 // If you keep objects closer than std::hardware_constructive_interference_size, they
 // “should” end up on the same cache line
+
+////////////////////////////////////////////////////////////////////////////
+//// Cache-conscious programming (Adapted from Herlihy&Shavit p. 477)
+////////////////////////////////////////////////////////////////////////////
+
+// (1) Objects or fields that are accessed independently 
+//     should be aligned and padded so they end up on 
+//     different cache lines.
+
+// (2) Keep read-only data separate from data that is modified frequently.
+
+// (3) When possible, split an object into thread-local pieces. For example, a counter
+//     used for statistics could be split into an array of counters, one per thread, each
+//     one residing on a different cache line. While a shared counter would cause
+//     invalidation traffic, the split counter allows each thread to update its own replica
+//     without causing cache coherence traffic.
+
+// (4) If a lock protects data that is frequently modified, then keep the lock and the
+//     data on distinct cache lines, so that threads trying to acquire the lock do not
+//     interfere with the lock-holder’s access to the data.
+
+// (5) If a lock protects data that is frequently uncontended, then try to keep the lock
+//     and the data on the same cache lines, so that acquiring the lock will also load
+//     some of the data into the cache.
+
+// (6) If a class or struct contains a large chunk of data whose size is divisible by a
+//     high power of two, consider separating it out of the class and holding it with an
+//     unique_ptr to avoid the Ghostscript problem from the previous slide (see lec 5)
+
+// (7) Use a profiling tool like VTune to identify where your cache bottlenecks are

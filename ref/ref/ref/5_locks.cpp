@@ -15,9 +15,9 @@
 // ⚫ std::scoped_lock (C++17 can lock any number of locks without deadlocking)
 
 
-//////////////////
-// MUTEX (+RAII)
-//////////////////
+//////////////////////////////////////////////////////////////
+// MUTEX, LOCK_GUARD (RAII)...COARSE-GRAINED DATA STRUCTURES
+//////////////////////////////////////////////////////////////
 #include <mutex>
 std::mutex m;             // creates muxtex...prevents concurrent access to the shared data structure
 std::lock_guard guard(m); // locks mutex...when destroyed will unlock
@@ -28,10 +28,9 @@ std::list<int> some_list; // accessed by multiple threads
 std::mutex some_mutex;    // prevents concurrent access to the shared data structure
 
 void add_to_list(int new_value) {
-    // Since I am going to access the shared data struct,
-    // acquire the lock
-    std::lock_guard guard(some_mutex); // CTAD deduces lock_guard<mutex>
-    some_list.push_back(new_value);
+    // Since I am going to access the shared data struct, acquire the lock
+    std::lock_guard guard(some_mutex);                                                //// ACQUIRE LOCK... CTAD deduces lock_guard<mutex>
+    some_list.push_back(new_value);                                                   //// USE SCOPING {} WITH LOCK_GUARD INSTEAD OF MANUAL UNLOCK
     // Now it is safe to use some_list. lock_guard destructor 
     // releases lock at end of function
     /* ... */
@@ -42,15 +41,15 @@ bool list_contains(int value_to_find) {
     return std::find(some_list.begin(),some_list.end(),value_to_find) != some_list.end();
 }
 
-//////////////////
-// SHARED MUTEX ("reader-writer" lock)
-//////////////////
+//////////////////////////////////////////////////////////////////
+// SHARED MUTEX, SHARED_LOCK, UNIQUE_LOCK ("reader-writer" lock)
+//////////////////////////////////////////////////////////////////
 // A shared_mutex can be acquired either in shared
 // ownership mode or unique ownership mode
 #include <shared_mutex>
-std::shared_mutex sm;     // creates a mutex that can be shared
-std::shared_lock sl(sm);  // acquires the shared lock
-std::unique_lock ul(sm);  // acquires the unique lock
+std::shared_mutex sm;                                               // CREATE MUTEX THAT CAN BE SHARED
+std::shared_lock sl(sm);                                            // ACQUIRE the shared lock
+std::unique_lock ul(sm);                                            // ACQUIRE the unique lock
 
 // EXAMPLE: reader-writer lock
 // Multiple threads can read from a data structure at the
@@ -61,11 +60,11 @@ std::unique_lock ul(sm);  // acquires the unique lock
 std::list<int> list1;
 std::shared_mutex m1;
 void add_to_list(int new_value) {
-    std::unique_lock guard(m1); // Unique writer access
+    std::unique_lock guard(m1);                                     // Unique writer access
     some_list.push_back(new_value);
 }
 bool list_contains(int value_to_find) {
-    std::shared_lock guard(m1); // Shared reader access
+    std::shared_lock guard(m1);                                     // Shared reader access
     return std::find(some_list.begin(),some_list.end(),value_to_find) != some_list.end();
 }
 
@@ -74,7 +73,9 @@ bool list_contains(int value_to_find) {
 ////////////////////
 // to avoid deadlocks, you want to acquire locks in the same order
 // lock A, lock B
+//////////////////////////////////////////////
 // BEST PRACTICE: DOCUMENT THE LOCK ORDERING
+//////////////////////////////////////////////
 
 ////////////////////
 // SCOPED_LOCK
@@ -85,7 +86,7 @@ bool list_contains(int value_to_find) {
 // might occur. Use std::scoped_lock to prevent this.
 account a1{};
 account a2{};
-std::scoped_lock lck(a1.m,a1.m);
+std::scoped_lock lck(a1.m,a1.m);                                              // CREATE SCOPED_LOCK
 
 // EXAMPLE: transfer between two bank accounts
 typedef double currency_value;
@@ -93,8 +94,8 @@ class account {
     std::mutex m;
     currency_value balance;
 public:
-    friend void transfer(account& from,account& to, currency_value amount) {
-        std::scoped_lock lck(from.m, to.m); // locks down two locks in deterministic ordering
+    friend void transfer(account& from,account& to, currency_value amount) {  // ACQUIRE SCOPED_LOCK (multiple mutexes)
+        std::scoped_lock lck(from.m, to.m); // locks down two locks in deterministic ordering / won't deadlock
         from.balance -= amount;
         to.balance += amount;
     }
@@ -136,7 +137,7 @@ namespace mpcs {
             count++;
         }
 
-        value_type get() const {
+        value_type get() const {        // LOGICALLY CONST
             std::shared_lock lock(mtx); // SHARED_LOCK to acquire read lock for shared_mutex
             return count;
         }

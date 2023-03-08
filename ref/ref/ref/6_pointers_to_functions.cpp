@@ -39,7 +39,7 @@ void exFuncPtr2(){
     std::cout << "Should I use means or medians ";
     std::string answer;
     std::cin >> answer; // e.g. "mean" "median"
-    double (*averager)(std::vector<double> const &) = (answer == "mean" ? mean : median); // function ptr "averager" is a ptr to a func that returns a vector of doubles
+    double (*averager)(std::vector<double> const &) = (answer == "mean" ? mean : median); // function ptr "averager" is a ptr to a func that accepts a vector of doubles, returns double
     std::cout << "The average home price is ";
     std::cout << averager(getHomePrices()) << std::endl;
 }
@@ -116,9 +116,9 @@ void exPtrFuncMemberSmart() {
 // CAN ONLY ASSIGN LAMBDAS WITH NO CAPTURE LIST TO POINTER
 //////////////////////////
 
-//////////////////////////
+//////////////////////////////////////
 // STD::FUNCTION std::function
-//////////////////////////
+//////////////////////////////////////
 // We have just discussed function pointers, but
 // in C++, functions aren’t the only thing that
 // can be called
@@ -148,8 +148,6 @@ struct WeightedMean {
 std::function<double(std::vector<double> const &)> averager = WeightedMean({1.5, 3.6, 4.2}); // OK. put a functor into a std::function
 // std::cout << "The average home price is ";
 // std::cout << averager(getHomePrices()) << std::endl;
-
-
 
 // EXAMPLE: STD::FUNCTION HOLDING MEMBER POINTER
 struct A {

@@ -27,7 +27,7 @@ std::remove_reference_t<T> && move(T&& a) {
 // What happens in the code
 struct A{};
 void f1(A&& a){}; // accepts an R value; basically telling f1 it is working with a temporary object it can raid for parts
-void f1(A&  a){}; // accepts an L value; basically telling f1 it is working with an existing object (can't raid for parts)
+void f1(A&  a){}; // accepts an L value or L value reference; basically telling f1 it is working with an existing object (can't raid for parts)
 
 void exMove(){
     A a{};

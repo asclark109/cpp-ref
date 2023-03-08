@@ -1,7 +1,6 @@
 ////////////////////
 // ASYNC FUNCTIONS
 ////////////////////
-#include <future>
 
 // it's nice that we can pass arguments to a thread (like we do to functions),
 // but how can we get the thread to return a value back?
@@ -21,10 +20,16 @@
 // running the function you passed it (usually) in a new thread
 // 'get()' when you want to get the value produced by the function
 // 'get()' will wait for the thread function to finish, then return the value
+#include <future>
+using std::future;
+using std::async;
 int func_returning_int(){return 1;};
 
 void exAsync(){
-    std::future<int> f = std::async(func_returning_int);
+    ////////////////////////////////////
+    // CREATE ASYNC (returns future)
+    ////////////////////////////////////
+    future<int> f = async(func_returning_int);
     f.get(); // blocks until the other thread completes calculation
 }
 
@@ -35,19 +40,23 @@ void exAsync(){
 // Kind of like a producer/consumer but you are just passing a
 // single item, so you don’t need a queue
 
-//////////////////////
-// PROMISE
-//////////////////////
+////////////////////////////////
+// CREATE PROMISE, GET FUTURE
+////////////////////////////////
 // lets you pass a value from one thread to another
 using std::future;
 using std::promise;
 promise<int> p;
 future<int> fi = p.get_future();
+
 // The producing thread stores the value in the promise
 // PRODUCER THREAD
 void exProducer(){
     // PRODUCER: assume he was given p
     // promise<int> p; 
+    //////////////////////////
+    // PROMISE.SETVALUE()
+    //////////////////////////
     p.set_value(7);
 }
 
@@ -56,6 +65,9 @@ void exConsumer(){
     // future<int> fi = p.get_future();
     // The consuming thread blocks, and then receives the value when 
     // it becomes available. 
+    //////////////////////////
+    // FUTURE.GET()
+    //////////////////////////
     fi.get(); // continues execution until value is set by thread with promise
 }
 

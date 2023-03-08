@@ -7,9 +7,9 @@
 
 // fields, methods are members of classes. there's more
 
-//////////////////
+//////////////////////////
 // STATIC CLASS MEMBERS
-//////////////////
+//////////////////////////
 // class member to be shared by all objects of a class
 
 // INITIALIZING static class members
@@ -35,9 +35,9 @@ struct CountedObject {
     static size_t objectCount; // STATIC MEMBER
 };
 
-//////////////////
+////////////////////
 // STATIC METHODS
-//////////////////
+////////////////////
 
 struct CountedObject2 {
     CountedObject2() { objectCount++; }

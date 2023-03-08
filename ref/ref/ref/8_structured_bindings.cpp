@@ -27,6 +27,9 @@ void exTie(){
     tie(name, rank, std::ignore) = identity(Mike); // AWKWARD
 }
 
+////////////////////////
+// STRUCTURED BINDINGS
+////////////////////////
 // structured bindings (C++17) solve this.
 void exStructuredBindings() {
     // EX 1
@@ -48,12 +51,15 @@ void exStructuredBindings() {
         volatile double y1; 
     };
 
-    S f();
-    auto const [x, y] = f(); 
+    S f{};
+    auto const [x, y] = f; 
     // x is a const int lvalue identifying the 2-bit bit field
     // y is a const volatile double lvalue
 }
 
+////////////////////////////
+// EXAMPLE:
+////////////////////////////
 #include <memory>
 #include <iostream>
 #include <utility>

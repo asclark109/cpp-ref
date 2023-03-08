@@ -43,8 +43,6 @@ async(f1); // future returned from async is not stored anywhere,
            // to the next line to launch g.
 async(g1);
 
-
-
 // EXAMPLE PARALLEL ACCUMULATE
 // async_accumulate_function.h
 #include <numeric>

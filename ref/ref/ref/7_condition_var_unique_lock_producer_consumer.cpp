@@ -26,9 +26,10 @@
 //////////////////////
 // CONDITION_VARIABLE
 //////////////////////
-// std::condition_variable // “wakes up” waiting threads
-// cv.notify_one(); // Wakes one waiter; No guarantees which one
-// cv.notify_all(); // Wakes all waiters
+// std::condition_variable    // “wakes up” waiting threads
+// cv.notify_one();           // Wakes one waiter; No guarantees which one                                       (producer typically executes notify)
+// cv.notify_all();           // Wakes all waiters                                                               (producer typically executes notify)
+// cv.wait(uniqlock,test);    // runs test, returning bool; if false, releases lock; else continues with lock    (consumer typically waits)
 #include<mutex>
 #include<condition_variable>
 using std::unique_lock;
@@ -44,18 +45,22 @@ void exCv(){
     // USING A CONDITION VARIABLE
     mutex m; // assume mutex, cv is shared by all producers and consumers
     std::condition_variable cv;
+    ////////////////////
     // CONSUMER CODE
+    ////////////////////
     unique_lock<mutex> lck(m);   // acquire unique lock
     cv.wait(lck, test);          // run test() if evaluates to true, proceeds; 
                                  // otherwise, relases lock and sleeps.
                                  // when it wakes back up it tries to acquire lock
-    // CODE IN OTHER THREAD
+    // CODE with lock...
 }
 
 void exProducer(){
     mutex m; // assume mutex, cv is shared by all producers and consumers
     std::condition_variable cv;
+    ////////////////////
     // PRODUCER CODE
+    ////////////////////
     // do stuff...
     unique_lock<mutex> lck(m);   // acquire unique lock
     // do stuff...

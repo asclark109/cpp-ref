@@ -1,6 +1,6 @@
-//////////////////////////
-// FULL SPECIALIZATION
-//////////////////////////
+//////////////////////////////////////////////////
+// FULL SPECIALIZATION (function, class, or member)
+//////////////////////////////////////////////////
 // A function, class, or member can be fully specialized
 // see Matrix<1,1>::determinant() in Matrix.h
 
@@ -36,66 +36,10 @@ namespace mpcs51044 {
 template<int rows, int cols = rows>
 class Matrix {
 public:
-	Matrix() : data{} {}
-
-	// constructor takes a std::initializer_list<T>, which
-	// represents a “braced initializer of Ts” expression
-
-	// Initializer lists have begin(), end(), and size()
-	// methods so your constructor can iterate through their value.
-	Matrix(initializer_list<initializer_list<double>> init) {
-		auto dp = data.begin();
-		for (auto row : init) {
-			std::copy(row.begin(), row.end(), dp->begin());
-			dp++;
-		}
-	}
-
-	// operator() overload...fetch data
-	double &operator()(int x, int y) {
-		return data[x][y];
-	}
-
-	// operator() overload...fetch data
-	double operator()(int x, int y) const {
-		return data[x][y];
-	}
-
-	// function to print itself
-	inline friend
-		ostream &
-		operator<<
-		(ostream &os, const Matrix<rows, cols> &m) {
-		size_t width = m.longestElementSize() + 2;
-		os << "[ " << endl;
-		for (int i = 0; i < rows; i++) {
-			for (int j = 0; j < cols; j++) {
-				os << setw(static_cast<streamsize>(width)) << m(i, j);
-			}
-			os << endl;
-		}
-		os << "]" << endl;
-		return os;
-	}
-
-	// minor()
-	Matrix<rows - 1, cols - 1> minor(int r, int c) const {
-		Matrix<rows - 1, cols - 1> result;
-		for (int i = 0; i < rows; i++) {
-			if (i == r) {
-				continue;
-			}
-			for (int j = 0; j < cols; j++) {
-				if (j == c) {
-					continue;
-				}
-				result(i < r ? i : i - 1, j < c ? j : j - 1) = data[i][j];
-			}
-		}
-		return result;
-	}
-
-	// determinant()
+	//////////////////////////////////////////////////////////////////////////////////
+	// METHOD FOR TEMPLATE CLASS: Matrix<rows,cols>
+	// this is the standard method for the class
+	//////////////////////////////////////////////////////////////////////////////////
 	double determinant() const {
 		double val = 0;
 		for (int i = 0; i < rows; i++) {
@@ -105,47 +49,23 @@ public:
 		}
 		return val;
 	}
+	//////////////////////////////////////////////////////////////////////////////////
 
 private:
-	static size_t accumulateMax(size_t acc, double d) {
-		ostringstream ostr;
-		ostr << d;
-		return std::max(acc, ostr.str().size());
-	}
-	static size_t accumulateMaxRow(size_t acc, array<double, cols> row) {
-		return std::max(acc, accumulate(row.begin(), row.end(), static_cast<size_t>(0), accumulateMax));
-	}
-	size_t longestElementSize() const {
-		return accumulate(data.begin(), data.end(), 0, accumulateMaxRow);
-	}
 	array<array<double, cols>, rows> data;
 };
 
-////////////////////////////////
-// FULL TEMPLATE SPECIALIZATION: implement specialized method for a Matrix<1,1>
-////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+// FULL TEMPLATE SPECIALIZATION: implement a method uniquely for the class: Matrix<1,1>
+// this is the standard method for this specific class: Matrix<1,1>
+// i.e. we are writing a uniquely different function for the class Matrix<1,1>
+//////////////////////////////////////////////////////////////////////////////////
 template<>
 double
-Matrix<1, 1>::determinant() const
-{
+Matrix<1, 1>::determinant() const {
 	return data[0][0];
 }
+//////////////////////////////////////////////////////////////////////////////////
 
-// overload operator*()... for multiplication
-template<int a, int b, int c>
-inline Matrix<a, c>
-operator*(Matrix<a, b> const &l, Matrix<b, c> const &r)
-{
-	Matrix<a, c> result;
-	for (int i = 0; i < a; i++) {
-		for (int j = 0; j < c; j++) {
-			double total = 0;
-			for (int k = 0; k < b; k++)
-				total += l(i, k) * r(k, j);
-			result(i, j) = total;
-		}
-	}
-	return result;
-}
 }
 #endif

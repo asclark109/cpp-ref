@@ -9,15 +9,12 @@
 //////////////////
 
 // You can overload operators just like functions
-
 //   Unary operators:   + - * & ~ ! ++ -- -> ->*
-
 //   Binary operators:  + - * / % ^ & | << >>
 //                      += -= *= /= %= ^= &= |= <<= >>=
 //                      < <= > >= == != && ||
 //                      , [] () <=>
 //                      new new[] delete delete[] 
-
 // cant overload: .  .*  ?:  ::
 
 // Sometimes you have a choice whether to use a special member

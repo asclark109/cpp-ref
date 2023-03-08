@@ -56,6 +56,10 @@ class BigClass {
     // (virtual by default unless you custom implement destructor
     ////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////
+    // BEST PRACTICES: DESTRUCTORS SHOULD BE LABELED NOTHROW
+    ////////////////////////////////////////////////////
+
     BigClass(BigClass const & s): i(s.i), d(s.d) {}; // COPY CONSTRUCTOR:
                                                      // implicitly generated
                                                      // copies all base classes and

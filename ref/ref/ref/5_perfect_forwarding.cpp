@@ -1,5 +1,6 @@
 #include <concepts>
 #include <iostream>
+// #include <utility> ? std::forward
 
 ////////////////////////
 // PERFECT FORWARDING
@@ -14,7 +15,8 @@
 template<class T>
 struct unique_ptr{};
 
-// makeUnique1: create object of type T, return unique_ptr to it. assumes only 1 arg needed
+// makeUnique1: create object of type T, return unique_ptr to it. 
+// assumes only 1 arg needed
 template<typename T, typename Arg>
 unique_ptr<T> makeUnique1(Arg arg) {
     return unique_ptr<T>(new T(arg));
@@ -24,7 +26,8 @@ unique_ptr<T> makeUnique1(Arg arg) {
 // C++ lets you use ... to indicate a “pack” of template parameters
 // -- While there are a lot of details, the basic use is straightforward
 
-// makeUnique2: create object of type T, return unique_ptr to it. can take any number of args.
+// makeUnique2: create object of type T, return unique_ptr to it.
+// can take any number of args.
 template<typename T, typename... Arg>
 unique_ptr<T> makeUnique2(Arg... arg) {
     return unique_ptr<T>(new T(arg...));
@@ -38,11 +41,13 @@ struct X {
 int i{3};
 unique_ptr<X> ptr = makeUnique2<X>(i);
 // makeUnique2() receives i by Lvalue, meaning it gets a copy of i
-// then X is constructed and modifies i...but this is modifying the local copy of i and not the original!
+// then X is constructed and modifies i...but this is modifying the
+// local copy of i and not the original!
 // PROBLEM: makeUnique infers that Args... is int, so i is passed by value.
 // SOLUTION (TEMP): take arguments by reference
 
-// makeUnique3: create object of type T, return unique_ptr to it. can take any number of L value args by reference.
+// makeUnique3: create object of type T, return unique_ptr to it.
+// can take any number of L value args by reference.
 template<typename T, typename... Arg>
 unique_ptr<T> makeUnique3(Arg &... arg) {
     return unique_ptr<T>(new T(arg...));
@@ -60,7 +65,8 @@ int i{2};
 Y localVar{i}; // legal;
 
 unique_ptr<Y> ptr = makeUnique3<Y>(i); // legal: accepts the Lvalue by reference
-// unique_ptr<Y> ptr = makeUnique3<Y>(3); // illegal!: only accepts Lvalues. cant accept Rvalues.
+// unique_ptr<Y> ptr = makeUnique3<Y>(3); // illegal!: only accepts Lvalues.
+// cant accept Rvalues.
 
 ////////////////////////////////
 // PERFECT-FORWARDING PROBLEM

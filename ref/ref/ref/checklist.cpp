@@ -74,6 +74,19 @@ using std::cout; // BETTER! gives you the best of both words
 
 // (8) UNDERSTAND VIRTUAL VS NON-VIRTUAL (WILL BE ON TEST)
 
+// (8a) consider adding static_assert to give useful error
+// messages with templates. Also use concepts in your templates
+
+// (8b) BEST PRACTICE: LABEL DESTRUCTORS ALMOST ALWAYS AS NO EXCEPT
+// whether you say so or not, your class destructors are implicitly noexcept
+
+// (8c) BEST PRACTICE: If your class’ move and copy constructors are
+// noexcept, be sure to declare them that way.
+// -- will pay off every time you put them in a container
+// -- Passing by value will likely be safer and more efficient as well
+// Vector will check if the object has a noexcept move constructor; 
+// if not, it will copy. thats why you should label move constructor no except
+
 // (9) PREFER C++ STYLE CASTS TO C STYLE CASTS
 // struct A{};
 // A* a = (A*)&b;                // BETTER!
@@ -90,6 +103,9 @@ using std::cout; // BETTER! gives you the best of both words
 //      (c) PUT CONST AFTER THE TYPE
 // declaring arguments e.g (int const &) allows them to accept temporaries
 // also, declaring e.g. (int const &) is good b/c no copy needs to be made
+
+// (11a) IF A FUNCTION OR EXPRESSION CAN BE EVALUATED AT COMPILE TIME,
+//       LABEL IT CONSTEXPR
 
 // (12) USE nullptr INSTEAD OF 0 OR NULL TO INDICATE NULL POINTER
 //      -- why? if you use 0 for a pointer it messes with function overloading

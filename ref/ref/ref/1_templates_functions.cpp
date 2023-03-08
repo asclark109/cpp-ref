@@ -3,13 +3,13 @@
 
 #include <iostream>
 
-//// C++20
+//// (C++20)
 // Function templates can be achieved in modern C++ with auto keywords
 auto square1(auto n) {
     return n*n;
 }
 
-//// PRE C++20
+//// (PRE C++20)
 // Function templates are achieved template, typename, class keywords
 template<typename T> // Template headers
 T square2(T n) {

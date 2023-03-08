@@ -2,9 +2,9 @@
 
 // There are 
 
-// FUNCTION TEMPLATES, like std::sort
-// CLASS TEMPLATES, like std::vector
-// VARIABLE templates
+// (1) FUNCTION TEMPLATES, like std::sort
+// (2) CLASS    TEMPLATES, like std::vector
+// (3) VARIABLE TEMPLATES
 
 //////////////////////
 // FUNCTION TEMPLATES
@@ -15,12 +15,16 @@
 // CLASS TEMPLATES
 //////////////////////
 // there are no “arguments,” so you put them up front in a “template” header
-template<std::floating_point T> struct complex; // use a concept to constrain
-template<typename T> struct vector { /* ... */ };  // no constraints
+template<std::floating_point T> // Good design. using a concept to constrain
+struct complex; 
 
-//
+template<typename T>
+struct vector { /* ... */ };    // Basic design. no constraints.
 
-// Specializing and overloadingtemplates
+
+////////////////////////////////////////////
+// SPECIALIZING AND OVERLOADING TEMPLATES
+////////////////////////////////////////////
 
 // The “secret sauce” for C++ templates is that
 // if the general “generic” definition of the
@@ -28,7 +32,8 @@ template<typename T> struct vector { /* ... */ };  // no constraints
 // particular set of template parameters, you
 // can override it for that particular case with a
 // specialization
-// ⚫ Think of this as the compile-time analog to
+
+// Think of this as the compile-time analog to
 // object orientation where you also override a
 // more general method in a more specialized
 // derived class
@@ -49,11 +54,3 @@ template<typename T> struct vector { /* ... */ };  // no constraints
 // PARTIAL SPECIALIZATION
 //////////////////////////
 // Only classes may be partially specialized
-// Template class:
-template<class T, class U>
-class Foo { /*...*/ };
-
-// Partial specialization:
-template<class T>
-class Foo<T, int> {...};
-// You can tell the second is a specialization because of the <> after the class name

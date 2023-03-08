@@ -5,9 +5,9 @@
 #include<initializer_list>
 using std::initializer_list;
 
-//////////////////
-// AGREGATE CONSTRUCTOR (Implicit)
-//////////////////
+////////////////////////////////////
+// AGGREGATE CONSTRUCTOR (Implicit)
+////////////////////////////////////
 
 struct S { 
     int i;
