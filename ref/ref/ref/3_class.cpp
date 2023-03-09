@@ -136,6 +136,14 @@ class BigClass {
                                         // the class. use DYNAMIC_CAST for polymorphism
                                         // related casting (e.g. downcasting)
 
+    virtual void mymethod();            // mark a method virtual if you want subclasses to override it
+
+    // virtual void superClassMethod() override final;    // use OVERRIDE to communicate you
+                                                          // are intending to override a super class method
+                                                          // use FINAL to communicate you do not
+                                                          // want subclasses to be able to 
+                                                          // override this.
+
     static size_t memUsed() {     // STATIC METHOD:
         return sizeof(BigClass);  // class member to be shared by all objects 
     }                             // of a class. invoke static method like:
