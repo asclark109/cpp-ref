@@ -15,6 +15,10 @@ using std::packaged_task;
 using std::future;
 
 void f(){};
+
+//////////////////////////////
+// CREATE PACKAGED_TASK
+//////////////////////////////
 packaged_task<int(double)> pt{f};
 future<int> fi = pt.get_future();
 // Then I could run pt in any other thread
