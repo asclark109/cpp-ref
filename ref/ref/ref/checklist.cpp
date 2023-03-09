@@ -26,6 +26,10 @@
 //     btree b2(b1);   // should deep copy
 //     b3 = b2;        // should deep copy
 
+// (3a) RULE OF TWO
+//     if using all RAII objects, then destructor is not needed because all fields
+//     exhibit automatic lifetime duration.
+
 // (4) RULE OF FIVE
 //     if you define copy constructor, then move constructors are not created by compiler
 //     --if the compiler thinks that if "copying every member" isn't the right way to copy
@@ -63,7 +67,7 @@ using std::cout; // BETTER! gives you the best of both words
 
 // (8) PREFER THE C++ VERSIONS OF THE STANDARD C HEADER
 #include <stdio.h> // BAD
-#include <cstdio>  // BETTER
+#include <cstdio>  // BETTER (prepend c, include .h instead)
 // -- C versions will sort-of work, but the C++
 // versions will more properly define signatures,
 // so overload resolution, type-checking, etc.
@@ -95,7 +99,7 @@ using std::cout; // BETTER! gives you the best of both words
 // static_cast type conversion for compile time type casting
 // C++ casts are more descriptive when they fail.
 
-// (10) PUT CONST AND VOLATILE AFTER TYPE NAMES
+// (10) PUT CONST AND VOLATILE AFTER TYPE NAMES (put on the right!)
 
 // (11) USE CONST APPROPRIATELY:
 //      (a) const methods should be const
