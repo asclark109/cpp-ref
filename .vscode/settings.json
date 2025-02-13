@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.golite": "go",
-        "array": "cpp"
+        "array": "cpp",
+        "mutex": "cpp"
     }
 }
